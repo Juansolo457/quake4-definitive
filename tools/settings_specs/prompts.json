@@ -1,0 +1,9 @@
+{
+  "after": "set_game_controller_layout",
+  "section": "Controller",
+  "rows": [
+    {"window": "set_game_controller_prompts", "id": "game.controller.prompt_style", "label_id": "#str_231307", "label": "Button Prompts",
+     "kind": "choice", "cvar": "in_promptStyle", "choices_id": "#str_231308",
+     "choices": "Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic", "values": "0;1;2;3;4;5", "default": "0"}
+  ]
+}

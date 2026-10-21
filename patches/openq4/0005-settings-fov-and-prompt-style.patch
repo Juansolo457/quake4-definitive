@@ -1,0 +1,2059 @@
+From 98a55275352480394dc60df65f9d4eb7bf9827fa Mon Sep 17 00:00:00 2001
+From: Juansolo457 <5344231+Juansolo457@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 16:27:13 -0700
+Subject: [PATCH] Settings: Field of View slider and Button Prompts choice
+
+- Gameplay And View > Field of View (g_fov, 70-130). g_fov is now archived and
+  declared identically in both game modules (1-179; multiplayer still clamps 90-175).
+- Controller > Button Prompts (in_promptStyle: Automatic, Xbox, PlayStation,
+  Nintendo, Steam Deck, Generic).
+Rows below move down; content height, section jumps, scroll range and thresholds,
+the settings registry and the coverage test follow.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../baseoq4/pak0/guis/menu/settings/game.gui  | 293 ++++++++++++------
+ .../pak0/guis/menu/settings/game_hovers.gui   | 192 +++++++-----
+ .../pak0/strings/brazilian_openq4.lang        |   3 +
+ .../baseoq4/pak0/strings/czech_openq4.lang    |   3 +
+ .../baseoq4/pak0/strings/english_openq4.lang  |   3 +
+ .../baseoq4/pak0/strings/french_openq4.lang   |   3 +
+ .../baseoq4/pak0/strings/german_openq4.lang   |   3 +
+ .../pak0/strings/hungarian_openq4.lang        |   3 +
+ .../baseoq4/pak0/strings/italian_openq4.lang  |   3 +
+ .../baseoq4/pak0/strings/polish_openq4.lang   |   3 +
+ .../baseoq4/pak0/strings/russian_openq4.lang  |   3 +
+ .../baseoq4/pak0/strings/spanish_openq4.lang  |   3 +
+ .../baseoq4/pak0/strings/turkish_openq4.lang  |   3 +
+ .../pak0/strings/ukrainian_openq4.lang        |   3 +
+ docs/dev/settings-menu-registry.json          |  63 ++++
+ src/framework/Session_menu.cpp                |  20 +-
+ src/game/gamesys/SysCvar.cpp                  |   2 +-
+ src/mpgame/gamesys/SysCvar.cpp                |   2 +-
+ tools/tests/settings_menu_coverage.py         |  23 +-
+ 19 files changed, 440 insertions(+), 191 deletions(-)
+
+diff --git a/content/baseoq4/pak0/guis/menu/settings/game.gui b/content/baseoq4/pak0/guis/menu/settings/game.gui
+index f11bd2d..2ac7e7a 100644
+--- a/content/baseoq4/pak0/guis/menu/settings/game.gui
++++ b/content/baseoq4/pak0/guis/menu/settings/game.gui
+@@ -55,19 +55,19 @@
+ 							if ( "gui::game_section_choice" == 0 ) {
+ 								set "gui::gui_set_game_scroll" "0" ;
+ 							} else if ( "gui::game_section_choice" == 1 ) {
+-								set "gui::gui_set_game_scroll" "11" ;
++								set "gui::gui_set_game_scroll" "12" ;
+ 							} else if ( "gui::game_section_choice" == 2 ) {
+-								set "gui::gui_set_game_scroll" "21" ;
++								set "gui::gui_set_game_scroll" "22" ;
+ 							} else if ( "gui::game_section_choice" == 3 ) {
+-								set "gui::gui_set_game_scroll" "45" ;
++								set "gui::gui_set_game_scroll" "47" ;
+ 							} else if ( "gui::game_section_choice" == 4 ) {
+-								set "gui::gui_set_game_scroll" "52" ;
++								set "gui::gui_set_game_scroll" "54" ;
+ 							} else if ( "gui::game_section_choice" == 5 ) {
+-								set "gui::gui_set_game_scroll" "63" ;
++								set "gui::gui_set_game_scroll" "65" ;
+ 							} else if ( "gui::game_section_choice" == 6 ) {
+-								set "gui::gui_set_game_scroll" "68" ;
++								set "gui::gui_set_game_scroll" "70" ;
+ 							} else {
+-								set "gui::gui_set_game_scroll" "75" ;
++								set "gui::gui_set_game_scroll" "77" ;
+ 							}
+ 							set "cmd" "applySettingsScroll game" ;
+ 						}
+@@ -80,7 +80,7 @@
+ 					noclip	0
+ 					windowDef set_game_content
+ 					{
+-						rect	-24,-41,640,2210
++						rect	-24,-41,640,2258
+ 						visible	1
+ 
+ 	//--------------------------------------------------------------//
+@@ -326,13 +326,80 @@
+ 				}
+ 	//==============================================================//
+ 				
++	//==============================================================//
++	// Settings->Game Options->Field of View
++	//==============================================================//
++
++				windowDef set_game_fov
++				{
++					rect	228,167,377,25
++					visible	1
++
++					windowDef set_game_fov_background
++					{
++						rect	0,0,377,25
++						visible	1
++						background	"gfx/guis/mainmenu/b3_light"
++						matcolor	0.545,0.588,0.294,0.4
++					}
++					windowDef set_game_fov_description
++					{
++						rect	31,3,210,18
++						visible	1
++						forecolor	1,1,1,0.8
++						text	"#str_231306"
++						textscale	0.24
++						font	"fonts/lowpixel"
++					}
++					windowDef set_game_fov_slider_bg
++					{
++						rect	244,8,128,16
++						background	"gfx/guis/mainmenu/slider_bg"
++						matcolor	1,0.745,0.137,0.8
++						noevents	1
++						visible	1
++					}
++					sliderDef set_game_fov_slider_bar
++					{
++						rect	244,9,71,8
++						forecolor	1,0.745,0.137,0.8
++						matcolor	1,0.745,0.137,0.8
++						low	70
++						high	130
++						step	1
++						thumbShader	"gfx/guis/mainmenu/slider_bar"
++						cvar	g_fov
++						visible	1
++					}
++					editDef set_game_fov_value
++					{
++						rect	322,4,100,18
++						visible	1
++						cvar	g_fov
++						textscale	0.24
++						maxchars	3
++						numeric	1
++						forecolor	1,0.745,0.137,0.8
++						font	"fonts/lowpixel"
++
++						onEnter {
++							setfocus "set_b_back" ;
++						}
++
++						onAction {
++							set "cmd" "play main_menu_selection" ;
++						}
++					}
++				}
++	//==============================================================//
++
+ 	//==============================================================//
+ 	// Settings->Game Options->Show Decals
+ 	//--------------------------------------------------------------//
+ 				
+ 				windowDef set_game_showdecals
+ 				{
+-					rect  228,167,403,25
++					rect  228,191,403,25
+ 					visible 1
+ 											
+ 					windowDef set_game_showdecals_background
+@@ -376,7 +443,7 @@
+ 				
+ 				windowDef set_game_showgun
+ 				{
+-					rect  228,191,403,25
++					rect  228,215,403,25
+ 					visible 1
+ 											
+ 					windowDef set_game_showgun_background
+@@ -420,7 +487,7 @@
+ 				
+ 				windowDef set_game_gunXYZ
+ 				{
+-					rect  228,215,403,25
++					rect  228,239,403,25
+ 					visible 1
+ 											
+ 					windowDef set_game_gunXYZ_background
+@@ -468,7 +535,7 @@
+ 				
+ 				windowDef set_game_simpleitems
+ 				{
+-					rect  228,239,403,25
++					rect  228,263,403,25
+ 					visible 1
+ 											
+ 					windowDef set_game_simpleitems_background
+@@ -512,7 +579,7 @@
+ 
+ 				windowDef set_game_opponentweaponstyle
+ 				{
+-					rect  228,263,403,25
++					rect  228,287,403,25
+ 					visible 1
+ 
+ 					windowDef set_game_opponentweaponstyle_background
+@@ -556,7 +623,7 @@
+ 				
+ 				windowDef set_game_forcemodel
+ 				{
+-					rect  228,287,403,25
++					rect  228,311,403,25
+ 					visible 1
+ 					
+ 					
+@@ -605,7 +672,7 @@
+ 
+ 				windowDef set_game_mouse
+ 				{
+-					rect	259,321,327,13
++					rect	259,345,327,13
+ 					visible	1
+ 					forecolor	1,1,1,0.4
+ 					text	"#str_229935"
+@@ -621,7 +688,7 @@
+ 
+ 				windowDef set_game_mpitch
+ 				{
+-					rect  228,335,403,25
++					rect  228,359,403,25
+ 					visible 1
+ 											
+ 					windowDef set_game_mpitch_background
+@@ -666,7 +733,7 @@
+ 
+ 				windowDef set_game_msmooth
+ 				{
+-					rect	228,359,377,25
++					rect	228,383,377,25
+ 					visible	1
+ 				
+ 					windowDef set_game_msmooth_background
+@@ -733,7 +800,7 @@
+ 
+ 				windowDef set_game_msensitivity
+ 				{
+-					rect	228,383,377,25
++					rect	228,407,377,25
+ 					visible	1
+ 				
+ 					windowDef set_game_msensitivity_background
+@@ -800,7 +867,7 @@
+ 
+ 				windowDef set_game_mcpi
+ 				{
+-					rect	228,407,377,25
++					rect	228,431,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_mcpi_background
+@@ -867,7 +934,7 @@
+ 
+ 				windowDef set_game_mfilter
+ 				{
+-					rect	228,431,377,25
++					rect	228,455,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_mfilter_background
+@@ -934,7 +1001,7 @@
+ 
+ 				windowDef set_game_maccel
+ 				{
+-					rect	228,455,377,25
++					rect	228,479,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_maccel_background
+@@ -1000,7 +1067,7 @@
+ 
+ 				windowDef set_game_macceloffset
+ 				{
+-					rect	228,479,377,25
++					rect	228,503,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_macceloffset_background
+@@ -1067,7 +1134,7 @@
+ 
+ 				windowDef set_game_maccelpower
+ 				{
+-					rect	228,503,377,25
++					rect	228,527,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_maccelpower_background
+@@ -1134,7 +1201,7 @@
+ 
+ 				windowDef set_game_msenscap
+ 				{
+-					rect	228,527,377,25
++					rect	228,551,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_msenscap_background
+@@ -1201,7 +1268,7 @@
+ 
+ 				windowDef set_game_controller
+ 				{
+-					rect	259,561,327,13
++					rect	259,585,327,13
+ 					visible	1
+ 					forecolor	1,1,1,0.4
+ 					text	"#str_229924"
+@@ -1211,7 +1278,7 @@
+ 
+ 				windowDef set_game_controller_enabled
+ 				{
+-					rect  228,575,377,25
++					rect  228,599,377,25
+ 					visible 1
+ 
+ 					windowDef set_game_controller_enabled_background
+@@ -1254,7 +1321,7 @@
+ 
+ 				windowDef set_game_controller_xenon
+ 				{
+-					rect	228,599,377,25
++					rect	228,623,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_controller_xenon_background
+@@ -1297,7 +1364,7 @@
+ 
+ 				windowDef set_game_controller_aimassist
+ 				{
+-					rect	228,623,377,25
++					rect	228,647,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_controller_aimassist_background
+@@ -1341,7 +1408,7 @@
+ 
+ 				windowDef set_game_controller_aimassist_friction
+ 				{
+-					rect	228,647,377,25
++					rect	228,671,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_controller_aimassist_friction_background
+@@ -1408,7 +1475,7 @@
+ 
+ 				windowDef set_game_controller_xenon_yaw
+ 				{
+-					rect	228,671,377,25
++					rect	228,695,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_controller_xenon_yaw_background
+@@ -1475,7 +1542,7 @@
+ 
+ 				windowDef set_game_controller_xenon_pitch
+ 				{
+-					rect	228,695,377,25
++					rect	228,719,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_controller_xenon_pitch_background
+@@ -1542,7 +1609,7 @@
+ 
+ 				windowDef set_game_controller_xenon_zoom
+ 				{
+-					rect	228,719,377,25
++					rect	228,743,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_controller_xenon_zoom_background
+@@ -1609,7 +1676,7 @@
+ 
+ 				windowDef set_game_controller_layout
+ 				{
+-					rect  228,743,377,25
++					rect  228,767,377,25
+ 					visible 1
+ 
+ 					windowDef set_game_controller_layout_background
+@@ -1647,13 +1714,57 @@
+ 				}
+ 	//==============================================================//
+ 
++	//==============================================================//
++	// Settings->Game Options->Button Prompts
++	//==============================================================//
++
++				windowDef set_game_controller_prompts
++				{
++					rect	228,791,377,25
++					visible	1
++
++					windowDef set_game_controller_prompts_background
++					{
++						rect	0,0,377,25
++						visible	1
++						background	"gfx/guis/mainmenu/b3_light"
++						matcolor	0.545,0.588,0.294,0.4
++					}
++					windowDef set_game_controller_prompts_description
++					{
++						rect	31,3,210,18
++						visible	1
++						forecolor	1,1,1,0.8
++						text	"#str_231307"
++						textscale	0.24
++						font	"fonts/lowpixel"
++					}
++					choiceDef set_game_controller_prompts_value
++					{
++						rect	240,3,162,18
++						visible	1
++						forecolor	1,0.745,0.137,0.8
++						cvar	in_promptStyle
++						textscale	0.24
++						font	"fonts/lowpixel"
++						choices	"#str_231308"
++						values	"0;1;2;3;4;5"
++						choiceType	1
++
++						onAction {
++							set "cmd" "play main_menu_selection" ;
++						}
++					}
++				}
++	//==============================================================//
++
+ 	//==============================================================//
+ 	// Settings->Game Options->Controller Dead Zone
+ 	//==============================================================//
+ 
+ 				windowDef set_game_controller_deadzone
+ 				{
+-					rect	228,767,377,25
++					rect	228,815,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_controller_deadzone_background
+@@ -1720,7 +1831,7 @@
+ 
+ 				windowDef set_game_controller_look_sensitivity
+ 				{
+-					rect	228,791,377,25
++					rect	228,839,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_controller_look_sensitivity_background
+@@ -1781,7 +1892,7 @@
+ 				}
+ 				windowDef set_game_controller_wheel_sensitivity
+ 				{
+-					rect	228,815,377,25
++					rect	228,863,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_controller_wheel_sensitivity_background
+@@ -1844,7 +1955,7 @@
+ 				}
+ 				windowDef set_game_wheel_offset
+ 				{
+-					rect	228,839,377,25
++					rect	228,887,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_wheel_offset_background
+@@ -1914,7 +2025,7 @@
+ 
+ 				windowDef set_game_controller_look_curve
+ 				{
+-					rect	228,863,377,25
++					rect	228,911,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_controller_look_curve_background
+@@ -1981,7 +2092,7 @@
+ 
+ 				windowDef set_game_controller_invert
+ 				{
+-					rect  228,887,377,25
++					rect  228,935,377,25
+ 					visible 1
+ 
+ 					windowDef set_game_controller_invert_background
+@@ -2024,7 +2135,7 @@
+ 
+ 				windowDef set_game_controller_trigger
+ 				{
+-					rect	228,911,377,25
++					rect	228,959,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_controller_trigger_background
+@@ -2091,7 +2202,7 @@
+ 
+ 				windowDef set_game_controller_rumble
+ 				{
+-					rect  228,935,377,25
++					rect  228,983,377,25
+ 					visible 1
+ 
+ 					windowDef set_game_controller_rumble_background
+@@ -2134,7 +2245,7 @@
+ 
+ 				windowDef set_game_controller_rumble_strength
+ 				{
+-					rect	228,959,377,25
++					rect	228,1007,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_controller_rumble_strength_background
+@@ -2201,7 +2312,7 @@
+ 
+ 				windowDef set_game_controller_gyro
+ 				{
+-					rect  228,993,377,25
++					rect  228,1041,377,25
+ 					visible 1
+ 
+ 					windowDef set_game_controller_gyro_background
+@@ -2244,7 +2355,7 @@
+ 
+ 				windowDef set_game_controller_gyro_sensitivity
+ 				{
+-					rect	228,1017,377,25
++					rect	228,1065,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_controller_gyro_sensitivity_background
+@@ -2311,7 +2422,7 @@
+ 
+ 				windowDef set_game_controller_touchpad_mode
+ 				{
+-					rect  228,1041,377,25
++					rect  228,1089,377,25
+ 					visible 1
+ 
+ 					windowDef set_game_controller_touchpad_mode_background
+@@ -2355,7 +2466,7 @@
+ 
+ 				windowDef set_game_controller_touchpad_sensitivity
+ 				{
+-					rect	228,1065,377,25
++					rect	228,1113,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_controller_touchpad_sensitivity_background
+@@ -2422,7 +2533,7 @@
+ 
+ 				windowDef set_game_controller_touchscreen
+ 				{
+-					rect  228,1089,377,25
++					rect  228,1137,377,25
+ 					visible 1
+ 
+ 					windowDef set_game_controller_touchscreen_background
+@@ -2465,7 +2576,7 @@
+ 
+ 				windowDef set_game_controller_low_battery_rumble
+ 				{
+-					rect	228,1113,377,25
++					rect	228,1161,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_controller_low_battery_rumble_background
+@@ -2532,7 +2643,7 @@
+ 
+ 				windowDef set_game_controller_low_battery_rumble_cap
+ 				{
+-					rect	228,1137,377,25
++					rect	228,1185,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_controller_low_battery_rumble_cap_background
+@@ -2599,7 +2710,7 @@
+ 				
+ 				windowDef set_game_customxhair
+ 				{
+-					rect  228,1161,403,25
++					rect  228,1209,403,25
+ 					visible 1
+ 											
+ 					windowDef set_game_customxhair_background
+@@ -2660,7 +2771,7 @@
+ 			
+ 				windowDef set_game_previewxhair
+ 				{
+-					rect	228,1185,377,48
++					rect	228,1233,377,48
+ 					visible	1
+ 				
+ 					windowDef set_game_previewxhair_background
+@@ -2723,7 +2834,7 @@
+ 
+ 				windowDef set_game_xhairsize
+ 				{
+-					rect  228,1233,377,25
++					rect  228,1281,377,25
+ 					visible 1
+ 											
+ 					windowDef set_game_xhairsize_background
+@@ -2780,7 +2891,7 @@
+ 
+ 				windowDef set_game_xhaircolor
+ 				{
+-					rect  228,1258,377,25
++					rect  228,1306,377,25
+ 					visible 1
+ 											
+ 					windowDef set_game_xhaircolor_background
+@@ -2924,7 +3035,7 @@
+ 
+ 				windowDef set_game_hitmarker
+ 				{
+-					rect  228,1283,403,25
++					rect  228,1331,403,25
+ 					visible 1
+ 
+ 					windowDef set_game_hitmarker_background
+@@ -2967,7 +3078,7 @@
+ 
+ 				windowDef set_game_hud
+ 				{
+-					rect	259,1317,327,13
++					rect	259,1365,327,13
+ 					visible	1
+ 					forecolor	1,1,1,0.4
+ 					text	"#str_231235"
+@@ -2982,7 +3093,7 @@
+ 
+ 				windowDef set_game_hudlayout
+ 				{
+-					rect	228,1331,377,25
++					rect	228,1379,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_hudlayout_background
+@@ -3026,7 +3137,7 @@
+ 
+ 				windowDef set_game_hudscale
+ 				{
+-					rect	228,1355,377,25
++					rect	228,1403,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_hudscale_background
+@@ -3092,7 +3203,7 @@
+ 
+ 				windowDef set_game_hudwidth
+ 				{
+-					rect	228,1379,377,25
++					rect	228,1427,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_hudwidth_background
+@@ -3136,7 +3247,7 @@
+ 
+ 				windowDef set_game_hudinset
+ 				{
+-					rect	228,1403,377,25
++					rect	228,1451,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_hudinset_background
+@@ -3202,7 +3313,7 @@
+ 
+ 				windowDef set_game_objectivestoggle
+ 				{
+-					rect	228,1427,377,25
++					rect	228,1475,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_objectivestoggle_background
+@@ -3245,7 +3356,7 @@
+ 
+ 				windowDef set_game_hudopacity
+ 				{
+-					rect	228,1451,377,25
++					rect	228,1499,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_hudopacity_background
+@@ -3311,7 +3422,7 @@
+ 
+ 				windowDef set_game_huddamagedir
+ 				{
+-					rect	228,1475,377,25
++					rect	228,1523,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_huddamagedir_background
+@@ -3354,7 +3465,7 @@
+ 
+ 				windowDef set_game_hudpickups
+ 				{
+-					rect	228,1499,377,25
++					rect	228,1547,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_hudpickups_background
+@@ -3397,7 +3508,7 @@
+ 
+ 				windowDef set_game_hudstrip
+ 				{
+-					rect	228,1523,377,25
++					rect	228,1571,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_hudstrip_background
+@@ -3440,7 +3551,7 @@
+ 
+ 				windowDef set_game_hudflash
+ 				{
+-					rect	228,1547,377,25
++					rect	228,1595,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_hudflash_background
+@@ -3483,7 +3594,7 @@
+ 
+ 				windowDef set_game_corpsesink
+ 				{
+-					rect  228,1571,377,25
++					rect  228,1619,377,25
+ 					visible 1
+ 
+ 					windowDef set_game_corpsesink_background
+@@ -3527,7 +3638,7 @@
+ 
+ 				windowDef set_game_corpsetime
+ 				{
+-					rect  228,1595,377,25
++					rect  228,1643,377,25
+ 					visible 1
+ 
+ 					windowDef set_game_corpsetime_background
+@@ -3574,7 +3685,7 @@
+ 
+ 				windowDef set_game_language
+ 				{
+-					rect  228,1619,377,25
++					rect  228,1667,377,25
+ 					visible 1
+ 											
+ 					windowDef set_game_language_background
+@@ -3622,7 +3733,7 @@
+ 
+ 				windowDef set_game_consoleaccess
+ 				{
+-					rect  228,1643,377,25
++					rect  228,1691,377,25
+ 					visible 1
+ 
+ 					windowDef set_game_consoleaccess_background
+@@ -3666,7 +3777,7 @@
+ 
+ 				windowDef set_game_autoskipcinematics
+ 				{
+-					rect  228,1667,377,25
++					rect  228,1715,377,25
+ 					visible 1
+ 
+ 					windowDef set_game_autoskipcinematics_background
+@@ -3709,7 +3820,7 @@
+ 
+ 				windowDef set_game_viewweapon
+ 				{
+-					rect	259,1701,327,13
++					rect	259,1749,327,13
+ 					visible	1
+ 					forecolor	1,1,1,0.4
+ 					text	"#str_229952"
+@@ -3725,7 +3836,7 @@
+ 
+ 				windowDef set_game_cl_gunfov
+ 				{
+-					rect	228,1715,377,25
++					rect	228,1763,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_cl_gunfov_background
+@@ -3792,7 +3903,7 @@
+ 
+ 				windowDef set_game_cl_gunfov_adjust
+ 				{
+-					rect  228,1739,377,25
++					rect  228,1787,377,25
+ 					visible 1
+ 
+ 					windowDef set_game_cl_gunfov_adjust_background
+@@ -3836,7 +3947,7 @@
+ 
+ 				windowDef set_game_cl_gun_x
+ 				{
+-					rect	228,1763,377,25
++					rect	228,1811,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_cl_gun_x_background
+@@ -3902,7 +4013,7 @@
+ 
+ 				windowDef set_game_cl_gun_y
+ 				{
+-					rect	228,1787,377,25
++					rect	228,1835,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_cl_gun_y_background
+@@ -3968,7 +4079,7 @@
+ 
+ 				windowDef set_game_cl_gun_z
+ 				{
+-					rect	228,1811,377,25
++					rect	228,1859,377,25
+ 					visible	1
+ 
+ 					windowDef set_game_cl_gun_z_background
+@@ -4034,7 +4145,7 @@
+ 
+ 				windowDef set_game_weaponkick
+ 				{
+-					rect	228,1835,403,25
++					rect	228,1883,403,25
+ 					visible	1
+ 
+ 					windowDef set_game_weaponkick_background
+@@ -4077,7 +4188,7 @@
+ 
+ 				windowDef set_game_vr
+ 				{
+-					rect	259,1869,327,13
++					rect	259,1917,327,13
+ 					visible	1
+ 					forecolor	1,1,1,0.4
+ 					text	"#str_230120"
+@@ -4093,7 +4204,7 @@
+ 
+ 				windowDef set_game_vr_enable
+ 				{
+-					rect	228,1883,403,25
++					rect	228,1931,403,25
+ 					visible	1
+ 
+ 					windowDef set_game_vr_enable_background
+@@ -4137,7 +4248,7 @@
+ 
+ 				windowDef set_game_vr_aimmode
+ 				{
+-					rect	228,1907,403,25
++					rect	228,1955,403,25
+ 					visible	1
+ 
+ 					windowDef set_game_vr_aimmode_background
+@@ -4181,7 +4292,7 @@
+ 
+ 				windowDef set_game_vr_lefthanded
+ 				{
+-					rect	228,1931,403,25
++					rect	228,1979,403,25
+ 					visible	1
+ 
+ 					windowDef set_game_vr_lefthanded_background
+@@ -4225,7 +4336,7 @@
+ 
+ 				windowDef set_game_vr_turnmode
+ 				{
+-					rect	228,1955,403,25
++					rect	228,2003,403,25
+ 					visible	1
+ 
+ 					windowDef set_game_vr_turnmode_background
+@@ -4269,7 +4380,7 @@
+ 
+ 				windowDef set_game_vr_snapturnangle
+ 				{
+-					rect	228,1979,403,25
++					rect	228,2027,403,25
+ 					visible	1
+ 
+ 					windowDef set_game_vr_snapturnangle_background
+@@ -4313,7 +4424,7 @@
+ 
+ 				windowDef set_game_vr_movedirection
+ 				{
+-					rect	228,2003,403,25
++					rect	228,2051,403,25
+ 					visible	1
+ 
+ 					windowDef set_game_vr_movedirection_background
+@@ -4357,7 +4468,7 @@
+ 
+ 				windowDef set_game_vr_roomscale
+ 				{
+-					rect	228,2027,403,25
++					rect	228,2075,403,25
+ 					visible	1
+ 
+ 					windowDef set_game_vr_roomscale_background
+@@ -4401,7 +4512,7 @@
+ 
+ 				windowDef set_game_vr_aimlaser
+ 				{
+-					rect	228,2051,403,25
++					rect	228,2099,403,25
+ 					visible	1
+ 
+ 					windowDef set_game_vr_aimlaser_background
+@@ -4445,7 +4556,7 @@
+ 
+ 				windowDef set_game_vr_hapticstrength
+ 				{
+-					rect	228,2075,403,25
++					rect	228,2123,403,25
+ 					visible	1
+ 
+ 					windowDef set_game_vr_hapticstrength_background
+@@ -4489,7 +4600,7 @@
+ 
+ 				windowDef set_game_vr_twohanded
+ 				{
+-					rect	228,2099,403,25
++					rect	228,2147,403,25
+ 					visible	1
+ 
+ 					windowDef set_game_vr_twohanded_background
+@@ -4533,7 +4644,7 @@
+ 
+ 				windowDef set_game_vr_vignette
+ 				{
+-					rect	228,2123,403,25
++					rect	228,2171,403,25
+ 					visible	1
+ 
+ 					windowDef set_game_vr_vignette_background
+@@ -4577,7 +4688,7 @@
+ 
+ 				windowDef set_game_vr_physicalcrouch
+ 				{
+-					rect	228,2147,403,25
++					rect	228,2195,403,25
+ 					visible	1
+ 
+ 					windowDef set_game_vr_physicalcrouch_background
+@@ -4625,7 +4736,7 @@
+ 					forecolor	1,1,1,0.8
+ 					matcolor	1,1,1,0.4
+ 					low	0
+-					high	79
++					high	81
+ 					step	1
+ 					vertical	1
+ 					scrollbar	1
+diff --git a/content/baseoq4/pak0/guis/menu/settings/game_hovers.gui b/content/baseoq4/pak0/guis/menu/settings/game_hovers.gui
+index 91c2611..dfb70b6 100644
+--- a/content/baseoq4/pak0/guis/menu/settings/game_hovers.gui
++++ b/content/baseoq4/pak0/guis/menu/settings/game_hovers.gui
+@@ -125,6 +125,25 @@
+ 				}
+ 			}
+ 		}
++		windowDef set_game_fov_hover
++		{
++			rect	245,169,361,20
++			visible	0
++
++			onMouseEnter {
++				if ("desktop::active" == 0) {
++					stoptransitions "set_game_fov_background" ;
++					set "set_game_fov_background::matcolor_w" "1" ;
++					set "cmd" "play main_menu_mouseover" ;
++				}
++			}
++
++			onMouseExit {
++				if ("desktop::active" == 0) {
++					transition "set_game_fov_background::matcolor_w" "1" "0.4" "300" ;
++				}
++			}
++		}
+ 	//==============================================================//
+ 				
+ 	//==============================================================//
+@@ -132,7 +151,7 @@
+ 	//--------------------------------------------------------------//
+ 		windowDef set_game_showdecals_hover
+ 		{
+-			rect	245,169,361,20
++			rect	245,193,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -159,7 +178,7 @@
+ 	//--------------------------------------------------------------//
+ 		windowDef set_game_showgun_hover
+ 		{
+-			rect	245,193,361,20
++			rect	245,217,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -186,7 +205,7 @@
+ 	//--------------------------------------------------------------//
+ 		windowDef set_game_gunXYZ_hover
+ 		{
+-			rect  245,217,361,20
++			rect  245,241,361,20
+ 			visible 0
+ 				
+ 			onMouseEnter {
+@@ -209,7 +228,7 @@
+ 	//--------------------------------------------------------------//
+ 		windowDef set_game_simpleitems_hover
+ 		{
+-			rect	245,241,361,20
++			rect	245,265,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -233,7 +252,7 @@
+ 	//--------------------------------------------------------------//
+ 		windowDef set_game_opponentweaponstyle_hover
+ 		{
+-			rect	245,265,361,20
++			rect	245,289,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -257,7 +276,7 @@
+ 	//--------------------------------------------------------------//
+ 		windowDef set_game_forcemodel_hover
+ 		{
+-			rect	245,289,361,20
++			rect	245,313,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -281,7 +300,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_mpitch_hover
+ 		{
+-			rect	245,337,361,20
++			rect	245,361,361,20
+ 			visible	0
+ 	
+ 			onMouseEnter {
+@@ -305,7 +324,7 @@
+ 	//==============================================================//			
+ 		windowDef set_game_msmooth_hover
+ 		{
+-			rect	245,361,361,20
++			rect	245,385,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -330,7 +349,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_msensitivity_hover
+ 		{
+-			rect	245,385,361,20
++			rect	245,409,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -357,7 +376,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_mcpi_hover
+ 		{
+-			rect	245,409,361,20
++			rect	245,433,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -381,7 +400,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_mfilter_hover
+ 		{
+-			rect	245,433,361,20
++			rect	245,457,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -405,7 +424,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_maccel_hover
+ 		{
+-			rect	245,457,361,20
++			rect	245,481,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -429,7 +448,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_macceloffset_hover
+ 		{
+-			rect	245,481,361,20
++			rect	245,505,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -453,7 +472,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_maccelpower_hover
+ 		{
+-			rect	245,505,361,20
++			rect	245,529,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -477,7 +496,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_msenscap_hover
+ 		{
+-			rect	245,529,361,20
++			rect	245,553,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -501,7 +520,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_controller_enabled_hover
+ 		{
+-			rect	245,577,361,20
++			rect	245,601,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -520,7 +539,7 @@
+ 		}
+ 		windowDef set_game_controller_xenon_hover
+ 		{
+-			rect	245,601,361,20
++			rect	245,625,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -539,7 +558,7 @@
+ 		}
+ 		windowDef set_game_controller_aimassist_hover
+ 		{
+-			rect	245,625,361,20
++			rect	245,649,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -558,7 +577,7 @@
+ 		}
+ 		windowDef set_game_controller_aimassist_friction_hover
+ 		{
+-			rect	245,649,361,20
++			rect	245,673,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -577,7 +596,7 @@
+ 		}
+ 		windowDef set_game_controller_xenon_yaw_hover
+ 		{
+-			rect	245,673,361,20
++			rect	245,697,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -596,7 +615,7 @@
+ 		}
+ 		windowDef set_game_controller_xenon_pitch_hover
+ 		{
+-			rect	245,697,361,20
++			rect	245,721,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -615,7 +634,7 @@
+ 		}
+ 		windowDef set_game_controller_xenon_zoom_hover
+ 		{
+-			rect	245,721,361,20
++			rect	245,745,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -634,7 +653,7 @@
+ 		}
+ 		windowDef set_game_controller_layout_hover
+ 		{
+-			rect	245,745,361,20
++			rect	245,769,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -651,9 +670,28 @@
+ 				}
+ 			}
+ 		}
++		windowDef set_game_controller_prompts_hover
++		{
++			rect	245,793,361,20
++			visible	0
++
++			onMouseEnter {
++				if ("desktop::active" == 0) {
++					stoptransitions "set_game_controller_prompts_background" ;
++					set "set_game_controller_prompts_background::matcolor_w" "1" ;
++					set "cmd" "play main_menu_mouseover" ;
++				}
++			}
++
++			onMouseExit {
++				if ("desktop::active" == 0) {
++					transition "set_game_controller_prompts_background::matcolor_w" "1" "0.4" "300" ;
++				}
++			}
++		}
+ 		windowDef set_game_controller_deadzone_hover
+ 		{
+-			rect	245,769,361,20
++			rect	245,817,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -672,7 +710,7 @@
+ 		}
+ 		windowDef set_game_controller_look_sensitivity_hover
+ 		{
+-			rect	245,793,361,20
++			rect	245,841,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -691,7 +729,7 @@
+ 		}
+ 		windowDef set_game_controller_wheel_sensitivity_hover
+ 		{
+-			rect	245,817,361,20
++			rect	245,865,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -710,7 +748,7 @@
+ 		}
+ 		windowDef set_game_wheel_offset_hover
+ 		{
+-			rect	245,841,361,20
++			rect	245,889,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -729,7 +767,7 @@
+ 		}
+ 		windowDef set_game_controller_look_curve_hover
+ 		{
+-			rect	245,865,361,20
++			rect	245,913,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -748,7 +786,7 @@
+ 		}
+ 		windowDef set_game_controller_invert_hover
+ 		{
+-			rect	245,889,361,20
++			rect	245,937,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -767,7 +805,7 @@
+ 		}
+ 		windowDef set_game_controller_trigger_hover
+ 		{
+-			rect	245,913,361,20
++			rect	245,961,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -786,7 +824,7 @@
+ 		}
+ 		windowDef set_game_controller_rumble_hover
+ 		{
+-			rect	245,937,361,20
++			rect	245,985,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -805,7 +843,7 @@
+ 		}
+ 		windowDef set_game_controller_rumble_strength_hover
+ 		{
+-			rect	245,961,361,20
++			rect	245,1009,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -824,7 +862,7 @@
+ 		}
+ 		windowDef set_game_controller_gyro_hover
+ 		{
+-			rect	245,995,361,20
++			rect	245,1043,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -843,7 +881,7 @@
+ 		}
+ 		windowDef set_game_controller_gyro_sensitivity_hover
+ 		{
+-			rect	245,1019,361,20
++			rect	245,1067,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -862,7 +900,7 @@
+ 		}
+ 		windowDef set_game_controller_touchpad_mode_hover
+ 		{
+-			rect	245,1043,361,20
++			rect	245,1091,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -881,7 +919,7 @@
+ 		}
+ 		windowDef set_game_controller_touchpad_sensitivity_hover
+ 		{
+-			rect	245,1067,361,20
++			rect	245,1115,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -900,7 +938,7 @@
+ 		}
+ 		windowDef set_game_controller_touchscreen_hover
+ 		{
+-			rect	245,1091,361,20
++			rect	245,1139,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -919,7 +957,7 @@
+ 		}
+ 		windowDef set_game_controller_low_battery_rumble_hover
+ 		{
+-			rect	245,1115,361,20
++			rect	245,1163,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -938,7 +976,7 @@
+ 		}
+ 		windowDef set_game_controller_low_battery_rumble_cap_hover
+ 		{
+-			rect	245,1139,361,20
++			rect	245,1187,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -962,7 +1000,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_customxhair_hover
+ 		{
+-			rect	245,1163,361,20
++			rect	245,1211,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -988,7 +1026,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_previewxhair_hover
+ 		{
+-			rect	245,1187,361,48
++			rect	245,1235,361,48
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1025,7 +1063,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_xhairsize_hover
+ 		{
+-			rect	245,1235,361,20
++			rect	245,1283,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1052,7 +1090,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_xhaircolor_hover
+ 		{
+-			rect	245,1260,361,20
++			rect	245,1308,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1078,7 +1116,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_hitmarker_hover
+ 		{
+-			rect	245,1285,361,20
++			rect	245,1333,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1104,7 +1142,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_hudlayout_hover
+ 		{
+-			rect	245,1333,361,20
++			rect	245,1381,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1130,7 +1168,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_hudscale_hover
+ 		{
+-			rect	245,1357,361,20
++			rect	245,1405,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1156,7 +1194,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_hudwidth_hover
+ 		{
+-			rect	245,1381,361,20
++			rect	245,1429,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1182,7 +1220,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_hudinset_hover
+ 		{
+-			rect	245,1405,361,20
++			rect	245,1453,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1208,7 +1246,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_objectivestoggle_hover
+ 		{
+-			rect	245,1429,361,20
++			rect	245,1477,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1234,7 +1272,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_hudopacity_hover
+ 		{
+-			rect	245,1453,361,20
++			rect	245,1501,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1260,7 +1298,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_huddamagedir_hover
+ 		{
+-			rect	245,1477,361,20
++			rect	245,1525,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1286,7 +1324,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_hudpickups_hover
+ 		{
+-			rect	245,1501,361,20
++			rect	245,1549,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1312,7 +1350,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_hudstrip_hover
+ 		{
+-			rect	245,1525,361,20
++			rect	245,1573,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1338,7 +1376,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_hudflash_hover
+ 		{
+-			rect	245,1549,361,20
++			rect	245,1597,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1364,7 +1402,7 @@
+ 	//==============================================================//
+ 		windowDef set_game_corpsesink_hover
+ 		{
+-			rect	245,1573,361,20
++			rect	245,1621,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1383,7 +1421,7 @@
+ 		}
+ 		windowDef set_game_corpsetime_hover
+ 		{
+-			rect	245,1597,361,20
++			rect	245,1645,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1402,7 +1440,7 @@
+ 		}
+ 		windowDef set_game_language_hover
+ 		{
+-			rect	245,1621,361,20
++			rect	245,1669,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1421,7 +1459,7 @@
+ 		}
+ 		windowDef set_game_consoleaccess_hover
+ 		{
+-			rect	245,1645,361,20
++			rect	245,1693,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1440,7 +1478,7 @@
+ 		}
+ 		windowDef set_game_autoskipcinematics_hover
+ 		{
+-			rect	245,1669,361,20
++			rect	245,1717,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1459,7 +1497,7 @@
+ 		}
+ 		windowDef set_game_cl_gunfov_hover
+ 		{
+-			rect	245,1717,361,20
++			rect	245,1765,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1478,7 +1516,7 @@
+ 		}
+ 		windowDef set_game_cl_gunfov_adjust_hover
+ 		{
+-			rect	245,1741,361,20
++			rect	245,1789,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1497,7 +1535,7 @@
+ 		}
+ 		windowDef set_game_cl_gun_x_hover
+ 		{
+-			rect	245,1765,361,20
++			rect	245,1813,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1516,7 +1554,7 @@
+ 		}
+ 		windowDef set_game_cl_gun_y_hover
+ 		{
+-			rect	245,1789,361,20
++			rect	245,1837,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1535,7 +1573,7 @@
+ 		}
+ 		windowDef set_game_cl_gun_z_hover
+ 		{
+-			rect	245,1813,361,20
++			rect	245,1861,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1554,7 +1592,7 @@
+ 		}
+ windowDef set_game_weaponkick_hover
+ 		{
+-			rect	245,1837,361,20
++			rect	245,1885,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1573,7 +1611,7 @@ windowDef set_game_weaponkick_hover
+ 		}
+ 		windowDef set_game_vr_enable_hover
+ 		{
+-			rect	245,1885,361,20
++			rect	245,1933,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1592,7 +1630,7 @@ windowDef set_game_weaponkick_hover
+ 		}
+ 		windowDef set_game_vr_aimmode_hover
+ 		{
+-			rect	245,1909,361,20
++			rect	245,1957,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1611,7 +1649,7 @@ windowDef set_game_weaponkick_hover
+ 		}
+ 		windowDef set_game_vr_lefthanded_hover
+ 		{
+-			rect	245,1933,361,20
++			rect	245,1981,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1630,7 +1668,7 @@ windowDef set_game_weaponkick_hover
+ 		}
+ 		windowDef set_game_vr_turnmode_hover
+ 		{
+-			rect	245,1957,361,20
++			rect	245,2005,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1649,7 +1687,7 @@ windowDef set_game_weaponkick_hover
+ 		}
+ 		windowDef set_game_vr_snapturnangle_hover
+ 		{
+-			rect	245,1981,361,20
++			rect	245,2029,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1668,7 +1706,7 @@ windowDef set_game_weaponkick_hover
+ 		}
+ 		windowDef set_game_vr_movedirection_hover
+ 		{
+-			rect	245,2005,361,20
++			rect	245,2053,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1687,7 +1725,7 @@ windowDef set_game_weaponkick_hover
+ 		}
+ 		windowDef set_game_vr_roomscale_hover
+ 		{
+-			rect	245,2029,361,20
++			rect	245,2077,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1706,7 +1744,7 @@ windowDef set_game_weaponkick_hover
+ 		}
+ 		windowDef set_game_vr_aimlaser_hover
+ 		{
+-			rect	245,2053,361,20
++			rect	245,2101,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1725,7 +1763,7 @@ windowDef set_game_weaponkick_hover
+ 		}
+ 		windowDef set_game_vr_hapticstrength_hover
+ 		{
+-			rect	245,2077,361,20
++			rect	245,2125,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1744,7 +1782,7 @@ windowDef set_game_weaponkick_hover
+ 		}
+ 		windowDef set_game_vr_twohanded_hover
+ 		{
+-			rect	245,2101,361,20
++			rect	245,2149,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1763,7 +1801,7 @@ windowDef set_game_weaponkick_hover
+ 		}
+ 		windowDef set_game_vr_vignette_hover
+ 		{
+-			rect	245,2125,361,20
++			rect	245,2173,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+@@ -1782,7 +1820,7 @@ windowDef set_game_weaponkick_hover
+ 		}
+ 		windowDef set_game_vr_physicalcrouch_hover
+ 		{
+-			rect	245,2149,361,20
++			rect	245,2197,361,20
+ 			visible	0
+ 
+ 			onMouseEnter {
+diff --git a/content/baseoq4/pak0/strings/brazilian_openq4.lang b/content/baseoq4/pak0/strings/brazilian_openq4.lang
+index a6de7de..41f9745 100644
+--- a/content/baseoq4/pak0/strings/brazilian_openq4.lang
++++ b/content/baseoq4/pak0/strings/brazilian_openq4.lang
+@@ -1376,4 +1376,7 @@
+ 	"#str_231303"	"360 Horizontal Speed"
+ 	"#str_231304"	"360 Vertical Speed"
+ 	"#str_231305"	"360 Zoomed Speed"
++	"#str_231306"	"Field of View"
++	"#str_231307"	"Button Prompts"
++	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
+ }
+diff --git a/content/baseoq4/pak0/strings/czech_openq4.lang b/content/baseoq4/pak0/strings/czech_openq4.lang
+index fd83687..ffb1a6f 100644
+--- a/content/baseoq4/pak0/strings/czech_openq4.lang
++++ b/content/baseoq4/pak0/strings/czech_openq4.lang
+@@ -1376,4 +1376,7 @@
+ 	"#str_231303"	"360 Horizontal Speed"
+ 	"#str_231304"	"360 Vertical Speed"
+ 	"#str_231305"	"360 Zoomed Speed"
++	"#str_231306"	"Field of View"
++	"#str_231307"	"Button Prompts"
++	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
+ }
+diff --git a/content/baseoq4/pak0/strings/english_openq4.lang b/content/baseoq4/pak0/strings/english_openq4.lang
+index 204a00f..0080461 100644
+--- a/content/baseoq4/pak0/strings/english_openq4.lang
++++ b/content/baseoq4/pak0/strings/english_openq4.lang
+@@ -1376,4 +1376,7 @@
+ 	"#str_231303"	"360 Horizontal Speed"
+ 	"#str_231304"	"360 Vertical Speed"
+ 	"#str_231305"	"360 Zoomed Speed"
++	"#str_231306"	"Field of View"
++	"#str_231307"	"Button Prompts"
++	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
+ }
+diff --git a/content/baseoq4/pak0/strings/french_openq4.lang b/content/baseoq4/pak0/strings/french_openq4.lang
+index a8acf49..e779e84 100644
+--- a/content/baseoq4/pak0/strings/french_openq4.lang
++++ b/content/baseoq4/pak0/strings/french_openq4.lang
+@@ -1381,4 +1381,7 @@
+ 	"#str_231303"	"360 Horizontal Speed"
+ 	"#str_231304"	"360 Vertical Speed"
+ 	"#str_231305"	"360 Zoomed Speed"
++	"#str_231306"	"Field of View"
++	"#str_231307"	"Button Prompts"
++	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
+ }
+diff --git a/content/baseoq4/pak0/strings/german_openq4.lang b/content/baseoq4/pak0/strings/german_openq4.lang
+index f0ce98a..07f4fac 100644
+--- a/content/baseoq4/pak0/strings/german_openq4.lang
++++ b/content/baseoq4/pak0/strings/german_openq4.lang
+@@ -1376,4 +1376,7 @@
+ 	"#str_231303"	"360 Horizontal Speed"
+ 	"#str_231304"	"360 Vertical Speed"
+ 	"#str_231305"	"360 Zoomed Speed"
++	"#str_231306"	"Field of View"
++	"#str_231307"	"Button Prompts"
++	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
+ }
+diff --git a/content/baseoq4/pak0/strings/hungarian_openq4.lang b/content/baseoq4/pak0/strings/hungarian_openq4.lang
+index 604e318..95e323e 100644
+--- a/content/baseoq4/pak0/strings/hungarian_openq4.lang
++++ b/content/baseoq4/pak0/strings/hungarian_openq4.lang
+@@ -1376,4 +1376,7 @@
+ 	"#str_231303"	"360 Horizontal Speed"
+ 	"#str_231304"	"360 Vertical Speed"
+ 	"#str_231305"	"360 Zoomed Speed"
++	"#str_231306"	"Field of View"
++	"#str_231307"	"Button Prompts"
++	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
+ }
+diff --git a/content/baseoq4/pak0/strings/italian_openq4.lang b/content/baseoq4/pak0/strings/italian_openq4.lang
+index 32b1aab..d00a990 100644
+--- a/content/baseoq4/pak0/strings/italian_openq4.lang
++++ b/content/baseoq4/pak0/strings/italian_openq4.lang
+@@ -1381,4 +1381,7 @@
+ 	"#str_231303"	"360 Horizontal Speed"
+ 	"#str_231304"	"360 Vertical Speed"
+ 	"#str_231305"	"360 Zoomed Speed"
++	"#str_231306"	"Field of View"
++	"#str_231307"	"Button Prompts"
++	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
+ }
+diff --git a/content/baseoq4/pak0/strings/polish_openq4.lang b/content/baseoq4/pak0/strings/polish_openq4.lang
+index 958eae4..231fc23 100644
+--- a/content/baseoq4/pak0/strings/polish_openq4.lang
++++ b/content/baseoq4/pak0/strings/polish_openq4.lang
+@@ -1432,4 +1432,7 @@
+ 	"#str_231303"	"360 Horizontal Speed"
+ 	"#str_231304"	"360 Vertical Speed"
+ 	"#str_231305"	"360 Zoomed Speed"
++	"#str_231306"	"Field of View"
++	"#str_231307"	"Button Prompts"
++	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
+ }
+diff --git a/content/baseoq4/pak0/strings/russian_openq4.lang b/content/baseoq4/pak0/strings/russian_openq4.lang
+index 51e2b11..88c5da6 100644
+--- a/content/baseoq4/pak0/strings/russian_openq4.lang
++++ b/content/baseoq4/pak0/strings/russian_openq4.lang
+@@ -1432,4 +1432,7 @@
+ 	"#str_231303"	"360 Horizontal Speed"
+ 	"#str_231304"	"360 Vertical Speed"
+ 	"#str_231305"	"360 Zoomed Speed"
++	"#str_231306"	"Field of View"
++	"#str_231307"	"Button Prompts"
++	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
+ }
+diff --git a/content/baseoq4/pak0/strings/spanish_openq4.lang b/content/baseoq4/pak0/strings/spanish_openq4.lang
+index ce48c51..3ffcc79 100644
+--- a/content/baseoq4/pak0/strings/spanish_openq4.lang
++++ b/content/baseoq4/pak0/strings/spanish_openq4.lang
+@@ -1376,4 +1376,7 @@
+ 	"#str_231303"	"360 Horizontal Speed"
+ 	"#str_231304"	"360 Vertical Speed"
+ 	"#str_231305"	"360 Zoomed Speed"
++	"#str_231306"	"Field of View"
++	"#str_231307"	"Button Prompts"
++	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
+ }
+diff --git a/content/baseoq4/pak0/strings/turkish_openq4.lang b/content/baseoq4/pak0/strings/turkish_openq4.lang
+index c6972e3..2cbe5f3 100644
+--- a/content/baseoq4/pak0/strings/turkish_openq4.lang
++++ b/content/baseoq4/pak0/strings/turkish_openq4.lang
+@@ -1376,4 +1376,7 @@
+ 	"#str_231303"	"360 Horizontal Speed"
+ 	"#str_231304"	"360 Vertical Speed"
+ 	"#str_231305"	"360 Zoomed Speed"
++	"#str_231306"	"Field of View"
++	"#str_231307"	"Button Prompts"
++	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
+ }
+diff --git a/content/baseoq4/pak0/strings/ukrainian_openq4.lang b/content/baseoq4/pak0/strings/ukrainian_openq4.lang
+index f61a444..7e3ba8c 100644
+--- a/content/baseoq4/pak0/strings/ukrainian_openq4.lang
++++ b/content/baseoq4/pak0/strings/ukrainian_openq4.lang
+@@ -1376,4 +1376,7 @@
+ 	"#str_231303"	"360 Horizontal Speed"
+ 	"#str_231304"	"360 Vertical Speed"
+ 	"#str_231305"	"360 Zoomed Speed"
++	"#str_231306"	"Field of View"
++	"#str_231307"	"Button Prompts"
++	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
+ }
+diff --git a/docs/dev/settings-menu-registry.json b/docs/dev/settings-menu-registry.json
+index 89317e0..bb45c4a 100644
+--- a/docs/dev/settings-menu-registry.json
++++ b/docs/dev/settings-menu-registry.json
+@@ -2195,6 +2195,42 @@
+       "restart_required": false,
+       "accessibility": "Slider with paired edit field; scales mouse, gyro/touchpad mouse-look, and controller look speed while scoped."
+     },
++    {
++      "id": "game.fov",
++      "pane": "Game Options",
++      "section": "Gameplay And View",
++      "path": "Settings > Game Options > Gameplay And View > Field of View",
++      "source": "game",
++      "container": "set_game_fov",
++      "widgets": [
++        "set_game_fov_slider_bar",
++        "set_game_fov_value"
++      ],
++      "edit_fields": [
++        {
++          "name": "set_game_fov_value",
++          "maxchars": 3,
++          "numeric": true
++        }
++      ],
++      "widget_type": "slider_edit",
++      "label_key": "#str_231306",
++      "target_type": "cvar",
++      "target": "g_fov",
++      "default": "90",
++      "ui_range": {
++        "low": "70",
++        "high": "130",
++        "step": "1"
++      },
++      "cvar_range": {
++        "low": "1",
++        "high": "179"
++      },
++      "restart_required": false,
++      "accessibility": "Slider with paired edit field.",
++      "range_intent": "g_fov is the 4:3 horizontal field of view (wider screens widen it automatically); the slider covers 70-130, the cvar accepts any value the projection can draw, and multiplayer still clamps to 90-175."
++    },
+     {
+       "id": "game.show_decals",
+       "pane": "Game Options",
+@@ -2792,6 +2828,33 @@
+       "restart_required": false,
+       "accessibility": "Standard focusable choiceDef row."
+     },
++    {
++      "id": "game.controller.prompt_style",
++      "pane": "Game Options",
++      "section": "Controller",
++      "path": "Settings > Game Options > Controller > Button Prompts",
++      "source": "game",
++      "container": "set_game_controller_prompts",
++      "widgets": [
++        "set_game_controller_prompts_value"
++      ],
++      "widget_type": "choice",
++      "label_key": "#str_231307",
++      "choices_key": "#str_231308",
++      "target_type": "cvar",
++      "target": "in_promptStyle",
++      "default": "0",
++      "restart_required": false,
++      "accessibility": "Standard focusable choiceDef row.",
++      "values": [
++        "0",
++        "1",
++        "2",
++        "3",
++        "4",
++        "5"
++      ]
++    },
+     {
+       "id": "game.controller.dead_zone",
+       "pane": "Game Options",
+diff --git a/src/framework/Session_menu.cpp b/src/framework/Session_menu.cpp
+index 8f94b3e..2fbaa28 100644
+--- a/src/framework/Session_menu.cpp
++++ b/src/framework/Session_menu.cpp
+@@ -50,7 +50,7 @@ extern glconfig_t glConfig;
+ idCVar	idSessionLocal::gui_configServerRate( "gui_configServerRate", "0", CVAR_GUI | CVAR_ARCHIVE | CVAR_ROM | CVAR_INTEGER, "" );
+ idCVar gui_set_sys_scroll( "gui_set_sys_scroll", "0", CVAR_GUI | CVAR_INTEGER, "display menu scroll step", 0, 28 );
+ idCVar gui_set_audio_scroll( "gui_set_audio_scroll", "0", CVAR_GUI | CVAR_INTEGER, "audio menu scroll step", 0.0f, 0.0f );
+-idCVar gui_set_game_scroll( "gui_set_game_scroll", "0", CVAR_GUI | CVAR_INTEGER, "game menu scroll step", 0, 79 );
++idCVar gui_set_game_scroll( "gui_set_game_scroll", "0", CVAR_GUI | CVAR_INTEGER, "game menu scroll step", 0, 81 );
+ // The opt-ins are unarchived, so each lasts until the player quits, and
+ // CVAR_NOCHEAT, because the engine counts any other unarchived CVar as a
+ // cheat: joining or hosting a server without cheats resets it to its default,
+@@ -4398,10 +4398,10 @@ static const mainMenuSettingsScrollPage_t MAINMENU_SETTINGS_SCROLL_PAGES[] = {
+ 		"game_section_choice",
+ 		21,
+ 		0,
+-		79,
++		81,
+ 		-24,
+ 		-41,
+-		2210,
++		2258,
+ 		24.0f
+ 	}
+ };
+@@ -4426,25 +4426,25 @@ static bool MainMenuSetWindowVar( idUserInterface *gui, const char *stateName, c
+ 
+ static int MainMenuSettingsSectionChoiceForScroll( const mainMenuSettingsScrollPage_t &page, int scrollValue ) {
+ 	if ( idStr::Icmp( page.name, "game" ) == 0 ) {
+-		if ( scrollValue < 11 ) {
++		if ( scrollValue < 12 ) {
+ 			return 0;
+ 		}
+-		if ( scrollValue < 21 ) {
++		if ( scrollValue < 22 ) {
+ 			return 1;
+ 		}
+-		if ( scrollValue < 45 ) {
++		if ( scrollValue < 47 ) {
+ 			return 2;
+ 		}
+-		if ( scrollValue < 52 ) {
++		if ( scrollValue < 54 ) {
+ 			return 3;
+ 		}
+-		if ( scrollValue < 63 ) {
++		if ( scrollValue < 65 ) {
+ 			return 4;
+ 		}
+-		if ( scrollValue < 68 ) {
++		if ( scrollValue < 70 ) {
+ 			return 5;
+ 		}
+-		if ( scrollValue < 75 ) {
++		if ( scrollValue < 77 ) {
+ 			return 6;
+ 		}
+ 		return 7;
+diff --git a/src/game/gamesys/SysCvar.cpp b/src/game/gamesys/SysCvar.cpp
+index fe46199..970a75c 100644
+--- a/src/game/gamesys/SysCvar.cpp
++++ b/src/game/gamesys/SysCvar.cpp
+@@ -553,7 +553,7 @@ idCVar g_viewNodalX(				"g_viewNodalX",				"0",			CVAR_GAME | CVAR_FLOAT, "" );
+ idCVar g_viewNodalZ(				"g_viewNodalZ",				"0",			CVAR_GAME | CVAR_FLOAT, "" );
+ // RAVEN BEGIN
+ // jshepard: fov as a float for smoother transitions?
+-idCVar g_fov(						"g_fov",					"90",			CVAR_GAME | CVAR_FLOAT | CVAR_NOCHEAT, "" );
++idCVar g_fov(						"g_fov",					"90",			CVAR_GAME | CVAR_FLOAT | PC_CVAR_ARCHIVE | CVAR_NOCHEAT, "horizontal field of view at 4:3; wider screens widen it automatically", 1.0f, 179.0f );
+ // RAVEN END
+ idCVar g_skipViewEffects(			"g_skipViewEffects",		"0",			CVAR_GAME | CVAR_BOOL, "skip damage and other view effects" );
+ idCVar g_mpWeaponAngleScale(		"g_mpWeaponAngleScale",		"0",			CVAR_GAME | CVAR_FLOAT, "Control the weapon sway in MP" );
+diff --git a/src/mpgame/gamesys/SysCvar.cpp b/src/mpgame/gamesys/SysCvar.cpp
+index b752bdf..a63ab29 100644
+--- a/src/mpgame/gamesys/SysCvar.cpp
++++ b/src/mpgame/gamesys/SysCvar.cpp
+@@ -631,7 +631,7 @@ idCVar g_viewNodalX(				"g_viewNodalX",				"0",			CVAR_GAME | CVAR_FLOAT, "" );
+ idCVar g_viewNodalZ(				"g_viewNodalZ",				"0",			CVAR_GAME | CVAR_FLOAT, "" );
+ // RAVEN BEGIN
+ // jshepard: fov as a float for smoother transitions?
+-idCVar g_fov(						"g_fov",					"90",			CVAR_GAME | CVAR_FLOAT | PC_CVAR_ARCHIVE, "" );
++idCVar g_fov(						"g_fov",					"90",			CVAR_GAME | CVAR_FLOAT | PC_CVAR_ARCHIVE | CVAR_NOCHEAT, "horizontal field of view at 4:3; wider screens widen it automatically", 1.0f, 179.0f );
+ // RAVEN END
+ idCVar g_skipViewEffects(			"g_skipViewEffects",		"0",			CVAR_GAME | CVAR_BOOL, "skip damage and other view effects" );
+ idCVar g_mpWeaponAngleScale(		"g_mpWeaponAngleScale",		"0",			CVAR_GAME | CVAR_FLOAT, "Control the weapon sway in MP" );
+diff --git a/tools/tests/settings_menu_coverage.py b/tools/tests/settings_menu_coverage.py
+index 8472b33..c16d9e9 100644
+--- a/tools/tests/settings_menu_coverage.py
++++ b/tools/tests/settings_menu_coverage.py
+@@ -528,6 +528,7 @@ def validate_value_entry_widgets(mainmenu: str, system_gui: str, audio_gui: str,
+             "set_game_msenscap_value",
+             "set_game_controller_deadzone_value",
+             "set_game_controller_look_sensitivity_value",
++            "set_game_fov_value",
+             "set_game_controller_aimassist_friction_value",
+             "set_game_controller_xenon_yaw_value",
+             "set_game_controller_xenon_pitch_value",
+@@ -1256,11 +1257,11 @@ def main() -> None:
+     for token in (
+         "rect\t204,104,377,16",
+         "rect\t0,128,640,256",
+-        "rect\t-24,-41,640,2210",
++        "rect\t-24,-41,640,2258",
+         "rect\t613,128,16,256",
+-        "high\t79",
++        "high\t81",
+         "cvar\tgui_set_game_scroll",
+-        "640,2210",
++        "640,2258",
+     ):
+         require(game_gui + mainmenu, token, "Game Options scroll coverage")
+     for token in (
+@@ -1270,13 +1271,13 @@ def main() -> None:
+         "#str_229960",
+         "game_section_choice",
+         'set "gui::gui_set_game_scroll" "0"',
+-        'set "gui::gui_set_game_scroll" "11"',
+-        'set "gui::gui_set_game_scroll" "21"',
+-        'set "gui::gui_set_game_scroll" "45"',
+-        'set "gui::gui_set_game_scroll" "52"',
+-        'set "gui::gui_set_game_scroll" "63"',
+-        'set "gui::gui_set_game_scroll" "68"',
+-        'set "gui::gui_set_game_scroll" "75"',
++        'set "gui::gui_set_game_scroll" "12"',
++        'set "gui::gui_set_game_scroll" "22"',
++        'set "gui::gui_set_game_scroll" "47"',
++        'set "gui::gui_set_game_scroll" "54"',
++        'set "gui::gui_set_game_scroll" "65"',
++        'set "gui::gui_set_game_scroll" "70"',
++        'set "gui::gui_set_game_scroll" "77"',
+         'set "cmd" "applySettingsScroll game"',
+         "set_game_section_choice::noevents",
+     ):
+@@ -1289,7 +1290,7 @@ def main() -> None:
+     reject(audio_gui + mainmenu, "set gui_set_audio_scroll", "Audio scroll cvar command")
+     for token in (
+         'gui_set_sys_scroll( "gui_set_sys_scroll", "0", CVAR_GUI | CVAR_INTEGER, "display menu scroll step", 0, 28 )',
+-        'gui_set_game_scroll( "gui_set_game_scroll", "0", CVAR_GUI | CVAR_INTEGER, "game menu scroll step", 0, 79 )',
++        'gui_set_game_scroll( "gui_set_game_scroll", "0", CVAR_GUI | CVAR_INTEGER, "game menu scroll step", 0, 81 )',
+         "HandleMainMenuSettingsScrollInput( guiActive, event->evValue )",
+         'MainMenuWindowStateEqualsInt( gui, "desktop::curr", page.expectedPage )',
+         "MainMenuSettingsPopupIsVisible( gui )",
+-- 
+2.53.0.windows.1
+

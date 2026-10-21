@@ -18,9 +18,9 @@ Surveyed 2026-10-21 against openQ4 `cbe967f` plus our patches 0001–0004 and th
 | Feature | Modern shooters | openQ4 today | 360 | Status |
 |---|---|---|---|---|
 | Glyphs in menus | ✔ | ✔ Xbox/PS/Nintendo/Deck/generic, automatic | ✔ Xbox | done |
-| Glyph style override | ✔ | `in_promptStyle` cvar | n/a | **gap:** not in menu |
+| Glyph style override | ✔ | `in_promptStyle` | n/a | done: Controller > Button Prompts (patch 0005) |
 | Glyphs in HUD prompts | ✔ | ✔ retained HUD (exit, respawn, quick chat) | ✔ | done |
-| Single-player hint text | ✔ | objectives hint uses `KeysFromBinding` (key names), `Player.cpp:5944` | ✔ | **gap:** switch to `KeysFromBindingForPrompt` |
+| Single-player hint text | ✔ | ✔ already. `KeysFromBinding` picks the last-used device's binding and emits a `^ikHH` glyph token; objectives hint, Remastered vehicle HUDs (`oq4_key_jump`: "Exit" + glyph) and the retained loading screen all use it | "Press USE to exit", A/B art | done upstream. Only the optional classic HUD (`ui_hudLayout 0`) still shows the stock "[ Press JUMP to exit ]" |
 | In-world screen prompt | n/a | none for controller | "Interactive / Press Use / USE D-PAD" | **gap** |
 | D-pad navigation of in-world screens | n/a | no | ✔ (`dpadGUI`) | **gap**, needs 360 recon of its GUI d-pad handling |
 | Separate H/V sensitivity | ✔ | single look sensitivity | ✔ | done in 360 mode (patch 0004); native mode still single |
@@ -39,7 +39,7 @@ Surveyed 2026-10-21 against openQ4 `cbe967f` plus our patches 0001–0004 and th
 | Trigger threshold | some | ✔ | 64/255 | done (360 mode uses 64/255) |
 | Gyro | ✔ (PS/Switch) | ✔ | n/a | done |
 | Toggle zoom / crouch / sprint | ✔ | zoom in menu; `in_toggleCrouch`, `in_alwaysRun` cvars | ✔ | **gap:** crouch and run toggles not in menu |
-| World FOV | ✔ | `g_fov` 90, not archived, not in menu | fixed | **gap:** add a slider and archive it |
+| World FOV | ✔ | `g_fov` 90 (4:3 basis, Hor+ on wide screens) | fixed | done: Gameplay And View > Field of View 70–130, now archived (patch 0005) |
 | Weapon FOV | ✔ | ✔ `cl_gunfov` | n/a | done |
 | Option descriptions | ✔ | hover highlight only | ✔ | **gap** |
 | Grey out rows that don't apply | ✔ | n/a | n/a | **gap:** in 360 mode, openQ4's dead zone, curve and look sensitivity rows do nothing |
@@ -60,3 +60,11 @@ Surveyed 2026-10-21 against openQ4 `cbe967f` plus our patches 0001–0004 and th
 Every row below moved down 144 px. The content height (2066 → 2210), section jumps, scroll limit (73 → 79) and section-from-scroll thresholds were updated in `game.gui`, `game_hovers.gui` and `Session_menu.cpp`, along with the settings registry and the `settings_menu_coverage.py` expectations, which pass. Labels were added to all 12 `*_openq4.lang` tables (English text for now). Also fixed a pre-existing upstream bug: the Weapon Kick hover sat 22 px above its row.
 
 **Verified:** coverage test passes. A static layout check found 87 rows with no overlaps, and every hover is aligned to its row. **Not verified:** how it looks on screen. My automated screenshot runs stalled in a hidden instance, so it needs a manual look.
+
+## Added in patch 0005
+- **Gameplay And View > Field of View** (`g_fov`, slider 70–130, step 1). `g_fov` is now `PC_CVAR_ARCHIVE | CVAR_NOCHEAT`, range 1–179, declared identically in the SP and MP modules. Before this, SP didn't archive it, so it reset to 90 every launch. Map scripts still apply their FOV as an offset (`openq4_scriptFovOffset`), and MP still clamps to 90–175.
+- **Controller > Button Prompts** (`in_promptStyle`: Automatic, Xbox, PlayStation, Nintendo, Steam Deck, Generic).
+- Rows were inserted with `tools/openq4_settings_rows.py` and the specs in `tools/settings_specs/`. The tool moves rows and hovers, section jumps, scroll range and thresholds, registry, strings and test expectations together. Coverage test passes; static layout check: 89 rows, no overlaps, 84 hovers aligned. Aim-assist smoke test still passes.
+
+## Graphics: the "Quake 4 Tweaker" mod
+[Quake 4 Tweaker](https://community.pcgamingwiki.com/files/file/1009-quake-4-tweaker/) (PCGamingWiki) is a `dinput.dll` proxy for the stock `Quake4.exe`. It forces an FPS cap above 60, high image quality (fixing texture bugs on modern GPUs), corpse time, FOV, intro skipping and custom resolutions. openQ4 covers all of these natively (`com_maxfps`, performance presets and image settings, Corpse Time, Field of View, `g_autoSkipCinematics`, custom resolutions), and a DLL injected into the stock exe doesn't apply to openQ4's executable. **Follow-up:** pick definitive-edition graphics defaults from openQ4's options (presets, MSAA/SMAA/TAA, shadow maps, screen-space lighting, texture quality), since stock out-of-the-box settings are bare.

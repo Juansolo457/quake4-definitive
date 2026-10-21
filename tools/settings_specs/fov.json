@@ -1,0 +1,10 @@
+{
+  "after": "set_game_scopesensitivity",
+  "section": "Gameplay And View",
+  "rows": [
+    {"window": "set_game_fov", "id": "game.fov", "label_id": "#str_231306", "label": "Field of View",
+     "kind": "slider", "cvar": "g_fov", "low": "70", "high": "130", "step": "1", "maxchars": 3,
+     "default": "90", "cvar_low": "1", "cvar_high": "179",
+     "range_intent": "g_fov is the 4:3 horizontal field of view (wider screens widen it automatically); the slider covers 70-130, the cvar accepts any value the projection can draw, and multiplayer still clamps to 90-175."}
+  ]
+}
