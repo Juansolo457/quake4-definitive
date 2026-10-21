@@ -92,5 +92,5 @@ Note: openQ4 sets `SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS=0`, so the game win
 
 ### Still to measure (manually, in game)
 - [ ] fps in a heavy level (e.g. `map game/airdefense1`) on GL vs Vulkan at 4K, with `com_showFPS 1`
-- [ ] Controller feel against the 360 version: openQ4 uses dead zone 0.18 and look curve 1.35, with no aim assist or friction
+- [ ] Controller feel against the 360 version: openQ4 uses dead zone 0.18 and look curve 1.35. User hands-on test (2026-10-21): **aim assist friction works well; the dead zone feels off**. Replace it with the 360 `idUsercmdGen` values once the disc is dumped.
 - [ ] High-refresh presentation above 60 Hz: how openQ4 handles the fixed 60 Hz game tic
