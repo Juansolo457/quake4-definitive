@@ -86,7 +86,7 @@ The tracks share the recon work. B gives a playable result within weeks, A withi
 - [ ] Get the Q4 SDK 1.4.2 game source from the official SDK installer into `reference/q4sdk/`
 - [x] Inventory the PC install (`E:\SteamLibrary\steamapps\common\Quake 4`) with `tools/pk4_index.py`. See [PC_BASELINE.md](PC_BASELINE.md)
 - [x] Build **openQ4** natively against the PC data as the **performance and visual baseline**. It builds with VS 2022, runs at 4K, and detects the controller. See [PC_BASELINE.md](PC_BASELINE.md)
-- [ ] Prototype Track B: enable the SDK's `_XENON` aim assist in openQ4 and add `SetSlowJoystick` friction
+- [x] Prototype Track B: enable the SDK's `_XENON` aim assist in openQ4 and add `SetSlowJoystick` friction. See [AIM_ASSIST.md](AIM_ASSIST.md); the smoke test passes, hands-on controller feel is still untested
 - [ ] Study the LostOdysseyRecomp and UnleashedRecomp runtimes, and write `docs/RUNTIME_NOTES.md` covering what to copy, what's game-specific, and licenses
 - [ ] Project skeleton: CMake + presets mirroring Lost Odyssey (`Q4Recomp/`, `Q4RecompLib/`, `thirdparty/`), CI for Windows and Linux
 

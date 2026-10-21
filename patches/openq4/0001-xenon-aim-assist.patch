@@ -1,0 +1,412 @@
+From aa2295c5ee5899d92eb92dae72e2181e58961bfa Mon Sep 17 00:00:00 2001
+From: Juansolo457 <5344231+Juansolo457@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 14:29:43 -0700
+Subject: [PATCH] Enable the Quake 4 SDK's Xenon aim assist on PC behind
+ pm_AimAssist
+
+The Q4 SDK game code still carries the Xbox 360 aim assist under _XENON/_XBOX:
+enemy selection in a narrow frustum around the crosshair (idPlayer::UpdateFocus)
+and stick friction through usercmdGen->SetSlowJoystick(). Compile it for every
+platform and gate it at runtime with pm_AimAssist (default 2, as on 360).
+
+- SysCvar: pm_AimAssist* defined and declared unconditionally; new pm_joystickSlow
+  bridges the friction percent to the engine the same way pm_isZoomed does.
+- rvWeapon: restore the base AllowAutoAim()/GetAutoAimFOV() the SDK omits;
+  autoAimFOV weapon key, defaulting to pm_AimAssistFOV.
+- idUsercmdGenLocal: scale controller look by pm_joystickSlow (mouse untouched),
+  reset it on map load.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/framework/UsercmdGen.cpp              | 23 ++++++++-
+ src/game/Player.cpp                       | 57 +++++++++++++----------
+ src/game/Player.h                         |  3 +-
+ src/game/Weapon.cpp                       | 11 +++++
+ src/game/Weapon.h                         |  4 ++
+ src/game/gamesys/SysCvar.cpp              | 11 +++--
+ src/game/gamesys/SysCvar.h                |  6 ++-
+ src/game/weapon/WeaponDarkMatterGun.cpp   |  2 -
+ src/game/weapon/WeaponGrenadeLauncher.cpp |  2 -
+ src/game/weapon/WeaponRocketLauncher.cpp  |  2 -
+ 10 files changed, 83 insertions(+), 38 deletions(-)
+
+diff --git a/src/framework/UsercmdGen.cpp b/src/framework/UsercmdGen.cpp
+index 348e531..5962541 100644
+--- a/src/framework/UsercmdGen.cpp
++++ b/src/framework/UsercmdGen.cpp
+@@ -418,6 +418,7 @@ private:
+ 	float			NormalizeMouseDeltasForCpi( float &mx, float &my, float &strafeMx, float &strafeMy ) const;
+ 	float			CalculateMouseSensitivity( float mx, float my, float *debugRate, float *debugPower ) const;
+ 	float			GetZoomLookSensitivityScale( void ) const;
++	float			GetJoystickSlowScale( void ) const;
+ 	int				GetMouseFilterSamples( void );
+ 	void			ResetMouseFilter( void );
+ 	void			BeginMouseFilter( void );
+@@ -836,6 +837,23 @@ float idUsercmdGenLocal::GetZoomLookSensitivityScale( void ) const {
+ 	return idMath::ClampFloat( 0.01f, 1.0f, static_cast<float>( zoomedSlowPercent ) * 0.01f );
+ }
+ 
++/*
++=================
++idUsercmdGenLocal::GetJoystickSlowScale
++
++Xenon idUsercmdGen::SetSlowJoystick: the game sets pm_joystickSlow to the aim assist friction
++percent while the crosshair is on an enemy.  Controller look only; the mouse is never slowed.
++=================
++*/
++float idUsercmdGenLocal::GetJoystickSlowScale( void ) const {
++	const int slowPercent = cvarSystem->GetCVarInteger( "pm_joystickSlow" );
++	if ( slowPercent <= 0 || slowPercent >= 100 ) {
++		return 1.0f;
++	}
++
++	return static_cast<float>( slowPercent ) * 0.01f;
++}
++
+ /*
+ =================
+ idUsercmdGenLocal::GetMouseFilterSamples
+@@ -1153,7 +1171,7 @@ void idUsercmdGenLocal::JoystickMove( void ) {
+ 	if ( joystickLookSensitivity <= 0.0f ) {
+ 		joystickLookSensitivity = 1.0f;
+ 	}
+-	joystickLookSensitivity = idMath::ClampFloat( 0.1f, 4.0f, joystickLookSensitivity ) * GetZoomLookSensitivityScale();
++	joystickLookSensitivity = idMath::ClampFloat( 0.1f, 4.0f, joystickLookSensitivity ) * GetZoomLookSensitivityScale() * GetJoystickSlowScale();
+ 	const bool weaponWheel = ( cmd.buttons & ( BUTTON_WEAPONWHEEL | BUTTON_QUICKCHAT ) ) != 0;
+ 	if ( weaponWheel ) {
+ 		// Wheel navigation has its own sensitivity and must not inherit slow
+@@ -1395,6 +1413,9 @@ void idUsercmdGenLocal::InitForNewMap( void ) {
+ 	toggled_zoom.Clear();
+ 	toggled_run.on = in_alwaysRun.GetBool();
+ 
++	// a friction value left over from the previous map must not slow the controller
++	cvarSystem->SetCVarInteger( "pm_joystickSlow", 0 );
++
+ 	Clear();
+ 	ClearAngles();
+ }
+diff --git a/src/game/Player.cpp b/src/game/Player.cpp
+index 7450cd8..2616898 100644
+--- a/src/game/Player.cpp
++++ b/src/game/Player.cpp
+@@ -7403,6 +7403,19 @@ Searches nearby locations
+    	}
+ }
+ 
++/*
++================
++Player_SetJoystickSlow
++
++openQ4: PC stand-in for the Xenon usercmdGen->SetSlowJoystick().  The scope slowdown already
++reaches the engine through pm_isZoomed, so while zoomed only that applies; otherwise the
++aim assist friction percent goes out through pm_joystickSlow (0 or 100 means full speed).
++================
++*/
++static void Player_SetJoystickSlow( bool zoomed, int percent ) {
++	cvarSystem->SetCVarInteger( "pm_joystickSlow", ( zoomed || percent >= 100 ) ? 0 : percent );
++}
++
+ /*
+ ================
+ Player_HasInteractiveGui
+@@ -7456,6 +7469,7 @@ void idPlayer::UpdateFocus( void ) {
+ 
+ 	// No focus during cinimatics
+ 	if ( gameLocal.inCinematic ) {
++		Player_SetJoystickSlow( zoomed, 100 );
+ 		return;
+ 	}
+ 
+@@ -7465,10 +7479,12 @@ void idPlayer::UpdateFocus( void ) {
+ 	}
+ 
+  	if ( spectating ) {
++		Player_SetJoystickSlow( zoomed, 100 );
+  		return;
+   	}
+ 
+ 	if ( g_perfTest_noPlayerFocus.GetBool() ) {
++		Player_SetJoystickSlow( zoomed, 100 );
+ 		return;
+ 	}
+ 
+@@ -7476,15 +7492,14 @@ void idPlayer::UpdateFocus( void ) {
+ 	cvarSystem->SetCVarInteger( "pm_isZoomed", zoomed ? pm_zoomedSlow.GetInteger() : 0 );
+ #endif
+ 
+-#ifdef _XENON
++	// openQ4: Xenon aim assist, enabled at runtime by pm_AimAssist instead of _XENON
+ 	if ( cursor ) {
+-		if ( weapon ) {
++		if ( weapon && pm_AimAssist.GetInteger() != 0 ) {
+ 			cursor->SetStateInt( "autoaim", weapon->AllowAutoAim() ? 1 : 0 );
+ 		} else {
+ 			cursor->SetStateInt( "autoaim", 0 );
+ 		}
+ 	}
+-#endif
+ 	
+ 	// Kill the focus brackets when their time has elapsed
+ 	oldBrackets = focusBrackets;	
+@@ -7710,17 +7725,16 @@ void idPlayer::UpdateFocus( void ) {
+ 	
+ //RAVEN BEGIN
+ //asalmon: auto-aim for Xenon, finds a best enemy and changes the crosshairs.
+-#ifdef _XBOX
+-	
+-		bool doAimAssist = cvarSystem->GetCVarBool("pm_AimAssist") || gameLocal.isMultiplayer;
+-		
++// openQ4: no longer _XBOX only; pm_AimAssist 0 turns it off
++
++		bool doAimAssist = pm_AimAssist.GetInteger() != 0 || gameLocal.isMultiplayer;
++
+ 		bestEnemy = NULL;
+-		bool showDebug = cvarSystem->GetCVarBool("pm_showAimAssist");
+-		float bDist = cvarSystem->GetCVarInteger("pm_AimAssistDistance");
++		bool showDebug = pm_showAimAssist.GetBool();
++		float bDist = pm_AimAssistDistance.GetInteger();
+ 		float dist;
+ 		idFrustum aimArea;
+ 		float dNear, dFar, size;
+-		renderView_t *rv = GetRenderView();
+ 		float fovY, fovX;
+ 		
+ 		if ( weapon && doAimAssist ) {
+@@ -7747,7 +7761,6 @@ void idPlayer::UpdateFocus( void ) {
+ 			}
+ 		}
+ 
+-#endif
+ //RAVEN END
+ 
+ 	// dluetscher: added optimization to eliminate redundant traces
+@@ -7822,7 +7835,6 @@ void idPlayer::UpdateFocus( void ) {
+ 
+ // RAVEN BEGIN
+ 
+-#ifdef _XENON
+ 		if ( doAimAssist ) {
+ 			if ( isAI && !isFriendly && (ent->health > 0) ) {
+ 				
+@@ -7853,11 +7865,10 @@ void idPlayer::UpdateFocus( void ) {
+ 								bestEnemy = (idActor *)ent;
+ 							}
+ 						}
+-					}					
++					}
+ 				}
+ 			}
+ 		}
+-#endif
+ 
+ // mekberg: allowFocus removed
+ 		if ( focusLength < (g_crosshairCharInfoFar.GetBool()?256.0f:80.0f) ) {
+@@ -8066,16 +8077,16 @@ void idPlayer::UpdateFocus( void ) {
+ 		}
+ 	}
+ 
+-#ifdef _XENON
++	// openQ4: Xenon aim assist friction, sent to the engine through pm_joystickSlow
+ 	if ( !gameLocal.isMultiplayer || (gameLocal.isMultiplayer && entityNumber == gameLocal.localClientNum) ) {
+-		
++
+ 		if ( !weapon || !weapon->AllowAutoAim() ) {
+ 			if ( cursor ) {
+ 				cursor->SetStateInt("enemyFocus", 0);
+ 			}
+-			usercmdGen->SetSlowJoystick( zoomed ? pm_zoomedSlow.GetInteger() : 100 );
+-		} else {		
+-		
++			Player_SetJoystickSlow( zoomed, 100 );
++		} else {
++
+ 			if ( bestEnemy && doAimAssist ) {
+ 				if ( cursor ) {
+ 					cursor->SetStateInt("enemyFocus", 1);
+@@ -8085,20 +8096,18 @@ void idPlayer::UpdateFocus( void ) {
+ 				altEnd[2]+=35.0f; // origin is always below the monster's feet for whatever reason, so aim at this
+ 				gameLocal.TracePoint( this, trace, start, altEnd, MASK_SHOT_BOUNDINGBOX, this );
+ 				if ( ( trace.fraction < 1.0f ) && ( trace.c.entityNum == bestEnemy->entityNumber ) ) {
+-					int slow = pm_AimAssistSlow.GetInteger();
+-					usercmdGen->SetSlowJoystick( zoomed ? pm_zoomedSlow.GetInteger() : slow );
++					Player_SetJoystickSlow( zoomed, pm_AimAssistSlow.GetInteger() );
+ 				} else {
+-					usercmdGen->SetSlowJoystick( zoomed ? pm_zoomedSlow.GetInteger() : 100 );
++					Player_SetJoystickSlow( zoomed, 100 );
+ 				}
+ 			} else {
+-				usercmdGen->SetSlowJoystick( zoomed ? pm_zoomedSlow.GetInteger() : 100 );
++				Player_SetJoystickSlow( zoomed, 100 );
+ 				if ( cursor ) {
+ 					cursor->SetStateInt("enemyFocus", 0);
+ 				}
+ 			}
+ 		}
+ 	}
+-#endif
+ 
+ 	if ( !gameLocal.isMultiplayer || (gameLocal.isMultiplayer && entityNumber == gameLocal.localClientNum) ) {
+ 		if ( wasTargetFriendly && !targetFriendly && focusType == FOCUS_NONE ) {
+diff --git a/src/game/Player.h b/src/game/Player.h
+index 3e0459a..5157113 100644
+--- a/src/game/Player.h
++++ b/src/game/Player.h
+@@ -441,9 +441,8 @@ public:
+ 	int						lastPickupTime;
+ //RAVEN BEGIN
+ // asalmon: the eneny the player is most likely currently aiming at
+-#ifdef _XBOX
++// openQ4: kept on every platform for the aim assist (not saved; rebuilt each focus update)
+ 	idEntityPtr<idActor>	bestEnemy;
+-#endif
+ //RAVEN END
+ 
+ // RITUAL BEGIN
+diff --git a/src/game/Weapon.cpp b/src/game/Weapon.cpp
+index 66bcd5a..0db05a7 100644
+--- a/src/game/Weapon.cpp
++++ b/src/game/Weapon.cpp
+@@ -2584,6 +2584,17 @@ bool rvWeapon::CanZoom( void ) const {
+ #endif
+ }
+ 
++/*
++=====================
++rvWeapon::GetAutoAimFOV
++
++openQ4: aim assist cone, as a percentage of the vertical view half-angle (idPlayer::UpdateFocus)
++=====================
++*/
++float rvWeapon::GetAutoAimFOV( void ) const {
++	return spawnArgs.GetFloat( "autoAimFOV", pm_AimAssistFOV.GetString() );
++}
++
+ /***********************************************************************
+ 
+ 	Visual presentation
+diff --git a/src/game/Weapon.h b/src/game/Weapon.h
+index 3fdc961..30e5474 100644
+--- a/src/game/Weapon.h
++++ b/src/game/Weapon.h
+@@ -149,6 +149,10 @@ public:
+ 	// openQ4: true for every weapon now, matching src/mpgame/Weapon.h.  Only consulted
+ 	// under gameLocal.isMultiplayer, so this tree is unaffected.  See idPlayer::FireWeapon.
+ 	virtual bool		NoFireWhileSwitching		( void ) const { return true; }
++	// openQ4: Xenon aim assist queries.  The SDK keeps the per-weapon AllowAutoAim overrides but
++	// not these base versions; the cone defaults to pm_AimAssistFOV unless the weapon def sets autoAimFOV.
++	virtual bool		AllowAutoAim				( void ) const { return true; }
++	float				GetAutoAimFOV				( void ) const;
+ 
+ 	void				Save						( idSaveGame *savefile ) const;
+ 	void				Restore						( idRestoreGame *savefile );
+diff --git a/src/game/gamesys/SysCvar.cpp b/src/game/gamesys/SysCvar.cpp
+index 5f12a02..fe46199 100644
+--- a/src/game/gamesys/SysCvar.cpp
++++ b/src/game/gamesys/SysCvar.cpp
+@@ -441,15 +441,18 @@ idCVar g_liquidTestVolumeSize(      "g_liquidTestVolumeSize",   "640",
+ 
+ // RAVEN BEGIN
+ // asalmon: parameters for aim assistance on Xenon - or a non-final pc build so Caryn can edit the guis
+-#if defined( _XBOX ) || !defined( _FINAL )
+-idCVar pm_AimAssist(				"pm_AimAssist",				"2",			CVAR_GAME | CVAR_INTEGER | CVAR_ARCHIVE , "Enable Xbox aim assistance. 1 to use change player view method. 2 to use change muzzle aim method.\n");
++// openQ4: the Xenon single player aim assist runs on every platform, so these are always defined.
++// The SDK only carries the target focus and stick friction half; the view/muzzle correction the
++// 360 build applied with pm_AimAssist 1/2 and pm_AimAssistBump/Threshold is not in the SDK.
++idCVar pm_AimAssist(				"pm_AimAssist",				"2",			CVAR_GAME | CVAR_INTEGER | CVAR_ARCHIVE , "Xbox 360 controller aim assist: 0 off, 1 or 2 on (enemy focus and stick friction).\n", 0, 2, idCmdSystem::ArgCompletion_Integer<0,2> );
+ idCVar pm_AimAssistDistance(		"pm_AimAssistDistance",		"1000",			CVAR_GAME | CVAR_INTEGER, "The max aim assist distance.\n");
+ idCVar pm_AimAssistThreshold(		"pm_AimAssistThreshold",	"1.0",			CVAR_GAME | CVAR_FLOAT, "Threshold by which the projectile is aimed at the offending target.\n");
+ idCVar pm_AimAssistFOV(				"pm_AimAssistFOV",			"10",			CVAR_GAME | CVAR_INTEGER, "The field of view for aim assistance.\n");
+ idCVar pm_AimAssistBump(			"pm_AimAssistBump",			"10",			CVAR_GAME | CVAR_INTEGER, "The percentage of correction applied either to the view or the muzzle aim.\n");
+ idCVar pm_showAimAssist(			"pm_showAimAssist",			"0",			CVAR_GAME | CVAR_BOOL, "Draw aim assist frustum and bounding boxes.\n");
+-idCVar pm_AimAssistSlow(			"pm_AimAssistSlow",			"50",			CVAR_GAME | CVAR_INTEGER, "The percentage to slow the turning motion by when targeting an enemy.\n");
++idCVar pm_AimAssistSlow(			"pm_AimAssistSlow",			"50",			CVAR_GAME | CVAR_INTEGER | CVAR_ARCHIVE, "Controller turn speed percent while the crosshair is on an enemy (aim assist friction).\n", 1, 100, idCmdSystem::ArgCompletion_Integer<1,100> );
+ 
++#if defined( _XBOX ) || !defined( _FINAL )
+ //asalmon: xenon controller config cvars
+ idCVar pm_ThumbstickConfig(			"pm_ThumbstickConfig",		"0",			CVAR_GAME | CVAR_ARCHIVE | CVAR_INTEGER | CVAR_GUI, "Change the thumbstick config on Xenon. 0 right handed, 1 left handed.\n");
+ idCVar pm_ButtonConfig(				"pm_ButtonConfig",			"0",			CVAR_GAME | CVAR_ARCHIVE | CVAR_INTEGER | CVAR_GUI, "Change the button configuration for Xenon.\n");
+@@ -490,6 +493,8 @@ idCVar pm_zoomedSlow(				"pm_zoomedSlow",			"50",			CVAR_GAME | CVAR_ARCHIVE | C
+ 
+ #ifndef _XENON
+ idCVar pm_isZoomed(					"pm_isZoomed",			"0",			CVAR_GAME | CVAR_INTEGER | CVAR_NOCHEAT | CVAR_NORESET, "active scoped look sensitivity percent; 0 when not scoped");
++// openQ4: carries the Xenon usercmdGen->SetSlowJoystick() value to the engine, the way pm_isZoomed carries the scope slowdown
++idCVar pm_joystickSlow(				"pm_joystickSlow",		"0",			CVAR_GAME | CVAR_INTEGER | CVAR_NOCHEAT | CVAR_NORESET, "active controller aim assist friction percent; 0 when off target");
+ #endif
+ 
+ // nmckenzie: added ability to try alternate accelerations.
+diff --git a/src/game/gamesys/SysCvar.h b/src/game/gamesys/SysCvar.h
+index 05ecec1..5ac0007 100644
+--- a/src/game/gamesys/SysCvar.h
++++ b/src/game/gamesys/SysCvar.h
+@@ -226,6 +226,7 @@ extern idCVar	pm_speed;
+ extern idCVar	pm_walkspeed;
+ extern idCVar	pm_zoomedSlow;
+ extern idCVar 	pm_isZoomed;
++extern idCVar	pm_joystickSlow;
+ // RAVEN END
+ extern idCVar	pm_noclipspeed;
+ extern idCVar	pm_spectatespeed;
+@@ -275,15 +276,16 @@ extern idCVar	g_liquidTestVolumeSize;
+ 
+ // RAVEN BEGIN
+ // asalmon: parameters for aim assistance on Xenon
+-#ifdef _XBOX
++// openQ4: defined on every platform
+ extern idCVar pm_AimAssist;
+ extern idCVar pm_AimAssistDistance;
+ extern idCVar pm_AimAssistThreshold;
+ extern idCVar pm_AimAssistFOV;
+ extern idCVar pm_AimAssistBump;
+-extern idCVar pm_AimAssistShow;
++extern idCVar pm_showAimAssist;
+ extern idCVar pm_AimAssistSlow;
+ 
++#ifdef _XBOX
+ extern idCVar pm_ThumbstickConfig;
+ extern idCVar pm_ButtonConfig;
+ 
+diff --git a/src/game/weapon/WeaponDarkMatterGun.cpp b/src/game/weapon/WeaponDarkMatterGun.cpp
+index 5a78ad7..deeae69 100644
+--- a/src/game/weapon/WeaponDarkMatterGun.cpp
++++ b/src/game/weapon/WeaponDarkMatterGun.cpp
+@@ -19,9 +19,7 @@ public:
+ 	void					PreSave					( void );
+ 	void					PostSave				( void );
+ 
+-#ifdef _XENON
+ 	virtual bool		AllowAutoAim			( void ) const { return false; }
+-#endif
+ 
+ protected:
+ 
+diff --git a/src/game/weapon/WeaponGrenadeLauncher.cpp b/src/game/weapon/WeaponGrenadeLauncher.cpp
+index 50a742b..d897cb0 100644
+--- a/src/game/weapon/WeaponGrenadeLauncher.cpp
++++ b/src/game/weapon/WeaponGrenadeLauncher.cpp
+@@ -15,9 +15,7 @@ public:
+ 	void					PreSave				( void );
+ 	void					PostSave			( void );
+ 
+-#ifdef _XENON
+ 	virtual bool		AllowAutoAim			( void ) const { return false; }
+-#endif
+ 
+ private:
+ 
+diff --git a/src/game/weapon/WeaponRocketLauncher.cpp b/src/game/weapon/WeaponRocketLauncher.cpp
+index ac98f95..e4063ea 100644
+--- a/src/game/weapon/WeaponRocketLauncher.cpp
++++ b/src/game/weapon/WeaponRocketLauncher.cpp
+@@ -26,9 +26,7 @@ public:
+ 	void					PostSave			( void );
+ 
+ 
+-#ifdef _XENON
+ 	virtual bool		AllowAutoAim			( void ) const { return false; }
+-#endif
+ 
+ protected:
+ 
+-- 
+2.53.0.windows.1
+
