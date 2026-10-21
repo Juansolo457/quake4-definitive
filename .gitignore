@@ -26,3 +26,6 @@ Thumbs.db
 # Reference source checkouts (Doom 3 GPL, BFG, Q4 SDK, openQ4)
 reference/
 *.pk4
+
+# Local data inventories (file listings of game data)
+inventory/

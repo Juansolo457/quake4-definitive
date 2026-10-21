@@ -56,6 +56,15 @@ That means we can **name most of the recompiled code automatically** by matching
 - **Level 1 (default):** follow Lost Odyssey and render the game's own Xenos draw calls through plume, with recompiled shaders. Faithful, and proven to look great.
 - **Level 2:** hook id Tech 4's `RB_*` back-end (known from Doom 3 source) and draw the frame with a native back-end. This gives better AA, shadows and resolution scaling, at the cost of more work.
 
+### Update after M0: a faster path to 360 controls
+
+The Q4 SDK game code in openQ4 still contains the **360 aim assist source** (`#ifdef _XENON`, see [PC_BASELINE.md](PC_BASELINE.md)). openQ4 already has SDL3 controllers, gyro, rumble, a Steam Deck profile, Vulkan, TAA/dynamic resolution and high-fps presentation. That opens a quick win that doesn't need the disc:
+
+- **Track B, "openQ4 + 360 controls":** enable the `_XENON` aim-assist blocks behind a cvar in openQ4, and implement the missing engine-side `SetSlowJoystick` friction in its SDL3 usercmd path. Then, once the 360 disc is dumped, replace openQ4's stick tuning with the values recovered from the 360 XEX. The result is PC-quality assets at native speed with 360-style aiming, and it's a natural upstream contribution to openQ4.
+- **Track A, the 360 recomp:** still the route to the *actual* 360 build: its menus/HUD, data, and exact behaviour. Its first recon job feeds Track B: recover `idUsercmdGen`'s joystick code and the 360 cvar defaults.
+
+The tracks share the recon work. B gives a playable result within weeks, A within months.
+
 ---
 
 ## 4. Quality targets
@@ -75,8 +84,9 @@ That means we can **name most of the recompiled code automatically** by matching
 ### M0: Groundwork (**now**, no 360 disc needed)
 - [x] Reference repos cloned into `reference/`
 - [ ] Get the Q4 SDK 1.4.2 game source from the official SDK installer into `reference/q4sdk/`
-- [ ] Inventory the PC install (`E:\SteamLibrary\steamapps\common\Quake 4`): pk4 list, cfgs, default controls. `tools/pk4_index.py`
-- [ ] Build **openQ4** (and/or dhewm3) natively against the PC data as a **performance and visual baseline**. Use it to test resolution, AA and high-fps behaviour on modern GPUs, and to prototype SDL3 gamepad support
+- [x] Inventory the PC install (`E:\SteamLibrary\steamapps\common\Quake 4`) with `tools/pk4_index.py`. See [PC_BASELINE.md](PC_BASELINE.md)
+- [x] Build **openQ4** natively against the PC data as the **performance and visual baseline**. It builds with VS 2022, runs at 4K, and detects the controller. See [PC_BASELINE.md](PC_BASELINE.md)
+- [ ] Prototype Track B: enable the SDK's `_XENON` aim assist in openQ4 and add `SetSlowJoystick` friction
 - [ ] Study the LostOdysseyRecomp and UnleashedRecomp runtimes, and write `docs/RUNTIME_NOTES.md` covering what to copy, what's game-specific, and licenses
 - [ ] Project skeleton: CMake + presets mirroring Lost Odyssey (`Q4Recomp/`, `Q4RecompLib/`, `thirdparty/`), CI for Windows and Linux
 
