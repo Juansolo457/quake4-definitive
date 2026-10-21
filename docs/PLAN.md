@@ -1,77 +1,115 @@
-# Quake 4 Xbox 360 Static Recompilation: Roadmap
+# Quake 4 (Xbox 360) Native Port: Master Plan
 
-Goal: run the **Xbox 360 release of Quake 4** (2005 launch title, ported by Raven) natively on Windows and Linux. That means no full-system emulator, the 360's console controller handling (aim assist, look acceleration, controller-first menus), a frame rate well above the original's often sub-30 fps, and game data supplied from the user's own disc.
+**Goal:** the Xbox 360 release of Quake 4, running natively on Windows and Linux, with no full-system emulator. It should be clean and sharp (native resolution, proper AA, no jaggies), run at 60 fps or more, and play best on a gamepad. That includes the 360 build's own aim assist and stick tuning, controller-first menus, and working well on a TV or Steam Deck.
 
-Same pipeline as the F.E.A.R. project: **XenonRecomp** (PowerPC `default.xex` → C++) + **XenosRecomp** (shaders), with a runtime underneath. ReXGlue (used by the GoldenEye 360 PC build) is another toolchain to evaluate.
+**Order:** Quake 4 first, F.E.A.R. second (`../fear360-recomp`). Quake 4 has much better reference source (see below), and the runtime we build for it carries straight over to F.E.A.R.
 
 ---
 
-## Why Quake 4 is the easier first target
+## 1. Prior art we're copying
 
-Quake 4 is id Tech 4, a lightly modified Doom 3 engine. We have far more reference source for it than for F.E.A.R.:
-
-| Code | Reference available | Coverage of the 360 binary |
+| Project | Approach | What we take from it |
 |---|---|---|
-| Engine (renderer, idLib, filesystem, sound, cmd/cvar, collision) | **Doom 3 GPL source** (2011) + **Doom 3 BFG** (2012, which has console/360-era code paths) | Most of the engine, with Raven's modifications on top |
-| Game logic (weapons, AI, vehicles, Strogg, MP) | **Quake 4 SDK** from Raven (game DLL source, under SDK EULA) | Nearly all gameplay |
-| Raven engine additions (effects system "BSE", etc.) | Partly reimplemented by **openQ4** (open-source Q4 engine replacement, beta) | Partial |
+| [LostOdysseyRecomp](https://github.com/freefrank/LostOdysseyRecomp) (360) | Static recomp: XenonRecomp + XenosRecomp, UnleashedRecomp-style runtime, plume renderer (D3D12/Vulkan/Metal), Xenia's FFmpeg fork for XMA, SDL | **Our main template.** Repo layout (`<Game>Recomp/` app + `<Game>RecompLib/` generated lib), in-app importer (ISO/GOD/extracted folder/`default.xex`), shader pre-compilation and caching, SMAA/TAA/GTAO, DLSS/FSR/XeSS, 30–120 fps caps + VRR, AppImage/Flatpak packaging. You already have it installed at `E:\game backups\xbox360\Lost Odyssey`, which is a useful reference build to compare against. |
+| [UnleashedRecomp](https://github.com/hedge-dev/UnleashedRecomp) (360) | The original XenonRecomp-based port | The reference runtime: kernel/XAM shims, guest memory, the renderer, the installer flow, and mid-asm hook patterns. |
+| [XenonRecomp](https://github.com/hedge-dev/XenonRecomp) / [XenosRecomp](https://github.com/hedge-dev/XenosRecomp) | PPC → C++ and Xenos shaders → HLSL/DXIL/SPIR-V | The core tools. |
+| [rexglue-sdk](https://github.com/rexglue/rexglue-sdk) (360) | Recomp toolchain with a Xenia-derived runtime (GoldenEye 360 PC build) | Alternative runtime if we want to boot sooner. Evaluate in M1. |
+| [OpenCE](https://github.com/OpenCommunityEdition/OpenCE) (orig. Xbox Halo CE) | Decompilation compiled natively, SDL3, OpenGL/GLES/WebGL | **How to do upgrades well:** render every refresh while the sim stays at its native tick rate ("Smooth Motion"), optional AA modes, a high-res HUD, a configurable FOV, and Linux/Android/web from one codebase. |
 
-Most recompiled functions can therefore be **named and understood by matching against real source**. That makes debugging the recomp much easier, and a later non-matching decompilation realistic.
+## 2. What makes Quake 4 easier
 
-## Two ways to get "Quake 4 with native controller support"
+Quake 4 is **id Tech 4**, the Doom 3 engine with Raven's additions. Nearly every function in the 360 `default.xex` has a source counterpart we can match against:
 
-| | A. 360 recomp (this project) | B. Source port (openQ4 / dhewm3-style + PC data) |
+| Area | Reference (in `reference/`, gitignored) |
+|---|---|
+| Engine: renderer, idLib, filesystem, decls, cvars, collision, sound | `DOOM-3` (GPL, 2011), `DOOM-3-BFG` (GPL, 2012, has console-era code: XInput, joystick usercmd gen, aim assist helpers) |
+| Game logic: weapons, AI, vehicles, MP | Quake 4 SDK 1.4.2 game source (Raven, SDK EULA; not on GitHub, comes from the SDK installer), plus `gbQuake4` (SDK merged into a Doom 3 port) |
+| Raven engine additions (BSE effects, etc.) | `openQ4` (open-source Q4 engine and game replacement) |
+| Modern id Tech 4 ports | `dhewm3` (SDL gamepad support, high-fps work), `openQ4` |
+
+That means we can **name most of the recompiled code automatically** by matching strings and call graphs. It also means we can make targeted upgrades by replacing whole subsystems (renderer back-end, usercmd generation) with real source instead of patching blind.
+
+---
+
+## 3. Architecture: hybrid recomp
+
+```
+           ┌──────────────────────────────────────────────┐
+           │ Quake 4 360 default.xex  (user's own disc)   │
+           └───────────────┬──────────────────────────────┘
+                XenonRecomp│ (build time)        XenosRecomp (shaders)
+           ┌───────────────▼──────────────────────────────┐
+           │ Q4RecompLib: recompiled game + engine (C++)  │
+           │   ▲ hooks replace selected functions:        │
+           │   │  • renderer back-end  → native renderer  │
+           │   │  • frame timing       → interpolation    │
+           │   │  • usercmd/input      → SDL3 + 360 logic │
+           └───┼──────────────────────────────────────────┘
+           ┌───┴──────────────────────────────────────────┐
+           │ Runtime: kernel/XAM shims, VFS (ISO/GOD),    │
+           │ threads, saves, XMA→PCM, SDL3 window/audio   │
+           │ Renderer: plume (D3D12 / Vulkan), upscalers  │
+           └──────────────────────────────────────────────┘
+```
+
+**Decision gate (end of M1):** decide how much of the renderer to replace.
+- **Level 1 (default):** follow Lost Odyssey and render the game's own Xenos draw calls through plume, with recompiled shaders. Faithful, and proven to look great.
+- **Level 2:** hook id Tech 4's `RB_*` back-end (known from Doom 3 source) and draw the frame with a native back-end. This gives better AA, shadows and resolution scaling, at the cost of more work.
+
+---
+
+## 4. Quality targets
+
+| | Original 360 | Our target |
 |---|---|---|
-| What you're playing | The actual 360 build: its tuning, menus, aim assist | The PC game with a controller added |
-| Effort | High | Low/medium: add SDL3 gamepad to an existing port |
-| Performance | Good after renderer work | Excellent, already native |
-| Controller feel | Authentic out of the box | Has to be recreated |
-
-**Plan:** do A, since it's what you want. We'll also use B as a cross-check: once the recomp shows exactly how the 360 build handles aim assist and stick curves, that logic could be ported back to openQ4 too.
-
----
-
-## Phases
-
-### Phase 0: Find and dump the disc
-See [RIPPING.md](RIPPING.md). Quake 4 360 is an early XGD2 disc. Record hashes in `docs/DUMPS.md`, never the files. Also keep your PC Quake 4 install at hand for comparing data files.
-
-### Phase 1: Recon
-- Extract and decrypt `default.xex`. Load it in IDA/Ghidra (PPC + XEX loader).
-- Check for leftover symbols, asserts, and `idLib` strings. id Tech 4 is very string-heavy (cvar names, cmd names, decl names), which makes it quick to anchor functions against the Doom 3 / Q4 SDK source.
-- Build a **symbol map** by auto-matching strings and call graphs against a PC build compiled from Doom 3 GPL + Q4 SDK.
-- Diff the 360 `.pk4` data against PC: find 360-only defs, GUIs and controller config (`*.cfg`, `guis/`).
-- Boot it in Xenia and note the compatibility status and which kernel/GPU features it uses.
-- **Find the controller code early.** Look for the 360 usercmd generation (the `idUsercmdGen` equivalent), XInput calls, and aim assist / "auto-aim" cvars. That's the feature we care most about preserving.
-
-### Phase 2: First recompile
-XenonAnalyse → TOML config (function boundaries, jump tables, setjmp, register save/restore helpers) → XenonRecomp → compile against a stub runtime.
-
-### Phase 3: Runtime
-- Kernel/XAM shims: threads, sync, file I/O mounting the dumped disc, profile/save stubs, Live stubbed (we'll likely drop 360 MP online at first)
-- **Renderer:** id Tech 4 has a clean renderer front-end/back-end split (`RB_*` functions, known from GPL source). The best option is probably to **hook the back-end and replace it with a native Vulkan/D3D12 path** instead of emulating Xenos command buffers. This is where the big performance win comes from.
-- Audio: XAudio2/XMA → SDL3 audio + XMA decoder
-- Input: XInput → **SDL3 gamepad**, which supports Xbox, PlayStation, Switch and Steam Deck controllers on Linux and Windows. Keep the 360 game's own stick/aim processing untouched.
-- **Exit criteria:** boots to the main menu.
-
-### Phase 4: Playable
-Full single-player playthrough. Saves go to the user directory. Then decide whether to support multiplayer (local split-screen, if the 360 build has it, or LAN).
-
-### Phase 5: Enhancements
-- **Frame rate:** id Tech 4 runs game logic at a fixed 60 Hz tic (`USERCMD_HZ`). Rendering above 60 needs interpolation between tics. dhewm3 and the Doom 3 BFG work show how others have done it.
-- Native resolution, widescreen FOV, better shadows/AA, optional mouse and keyboard, gyro aim through SDL3
-- Packaging: AppImage/Flatpak, Steam Deck testing
-
-### Phase 6 (optional): Gradual decompilation
-Swap recompiled functions for real source, starting from the matching Doom 3 GPL / Q4 SDK code. This is far more realistic here than for F.E.A.R.
+| Resolution | 720p-class, possibly lower internally (**measure in Xenia, M1**) | Native display res up to 4K, ultrawide Hor+ FOV, resolution scale slider |
+| Anti-aliasing | Little/none | SMAA / TAA / MSAA, later DLSS/FSR/XeSS like Lost Odyssey |
+| Frame rate | ~30 fps with heavy drops | 60 fps locked first. Then 120+/VRR by interpolating between the fixed 60 Hz game tics (`USERCMD_HZ`), the same idea as OpenCE's Smooth Motion |
+| Controls | 360 pad, aim assist | Same aim assist and curves (kept exactly), any controller through SDL3, rumble, optional gyro, remapping, optional mouse+keyboard |
+| Platforms | 360 | Windows (D3D12/Vulkan), Linux (Vulkan, AppImage/Flatpak), Steam Deck |
 
 ---
 
-## Legal ground rules
-- No game data, XEX files, or generated `ppc/` code in the repo. Users dump their own disc.
-- The Doom 3 source is GPLv3, so if we include it, the project must be GPLv3 too. The Q4 SDK is under Raven's EULA: use it as reference, and don't redistribute it wholesale.
+## 5. Milestones
 
-## Next actions
-1. **You:** find the Quake 4 360 disc and your PC copy, then dump the disc (RIPPING.md).
-2. **You:** send the recomp/hybrid repos you've been looking at.
-3. **Us:** set up the reference trees (Doom 3 GPL, Doom 3 BFG, Q4 SDK, openQ4) under `reference/` (gitignored), then do Phase 1 recon once the XEX exists.
+### M0: Groundwork (**now**, no 360 disc needed)
+- [x] Reference repos cloned into `reference/`
+- [ ] Get the Q4 SDK 1.4.2 game source from the official SDK installer into `reference/q4sdk/`
+- [ ] Inventory the PC install (`E:\SteamLibrary\steamapps\common\Quake 4`): pk4 list, cfgs, default controls. `tools/pk4_index.py`
+- [ ] Build **openQ4** (and/or dhewm3) natively against the PC data as a **performance and visual baseline**. Use it to test resolution, AA and high-fps behaviour on modern GPUs, and to prototype SDL3 gamepad support
+- [ ] Study the LostOdysseyRecomp and UnleashedRecomp runtimes, and write `docs/RUNTIME_NOTES.md` covering what to copy, what's game-specific, and licenses
+- [ ] Project skeleton: CMake + presets mirroring Lost Odyssey (`Q4Recomp/`, `Q4RecompLib/`, `thirdparty/`), CI for Windows and Linux
+
+### M1: Recon (needs the dumped 360 disc)
+- Dump and verify (see [RIPPING.md](RIPPING.md)), record the hash in `docs/DUMPS.md`
+- Boot in Xenia: measure the native resolution, fps and compatibility, and log the kernel imports and GPU features used
+- Load the XEX in Ghidra/IDA. Build the **symbol map** by matching strings and call graphs against Doom 3 / Q4 SDK
+- **Find the controller code:** usercmd generation, XInput polling, aim assist (friction, magnetism, auto-centre) and its cvars, stick dead zones and curves
+- Diff 360 data vs PC data (`.pk4`/GUIs/defs) to find 360-only content and config
+- Runtime decision: UnleashedRecomp/LO-style or rexglue-sdk
+
+### M2: First recompile
+XenonAnalyse → TOML config (function boundaries, jump tables, setjmp, save/restore helpers) → XenonRecomp → compiles and links against a stub runtime.
+
+### M3: Boots to the main menu
+Kernel/XAM shims, VFS on the imported disc, threads and sync, XMA audio, shaders through XenosRecomp, renderer through plume, SDL3 input.
+
+### M4: Playable
+Full campaign playthrough, saves in the user directory, settings menu, controller-navigable launcher and importer.
+
+### M5: Clean and fast
+Resolution, AA, ultrawide, high-fps interpolation, upscalers, a high-res HUD, then Steam Deck testing and packaging.
+
+### M6: F.E.A.R.
+Reuse the runtime for `../fear360-recomp`.
+
+---
+
+## 6. Ground rules
+- No game data, XEX files, `.pk4`s or generated recompiled code in the repo. Users import their own disc, as with Lost Odyssey.
+- Doom 3 code is GPLv3. If any of it is compiled in, the project is GPLv3. The Q4 SDK is EULA-licensed: reference only.
+- Check the license of each runtime we borrow from (UnleashedRecomp, Lost Odyssey) before copying code. Record it in `docs/RUNTIME_NOTES.md`.
+
+## 7. Open questions for you
+1. How did you dump Lost Odyssey (modded console, or a PC drive)? Use the same route for Quake 4.
+2. Which Quake 4 360 edition and region do you have (regular or Special Edition)?
