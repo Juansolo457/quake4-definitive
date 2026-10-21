@@ -1,5 +1,7 @@
 # Quake 4 (Xbox 360) Native Port: Master Plan
 
+> **Status note (2026-10-21):** this is the original roadmap. After M0/M1 the project changed direction to a "definitive edition" on openQ4 with the 360 controller feel re-implemented as patches (see the update sections below and [PROGRESS.md](PROGRESS.md)). The recompilation milestones (M2–M5) are shelved and planned for F.E.A.R. 360 instead.
+
 **Goal:** the Xbox 360 release of Quake 4, running natively on Windows and Linux, with no full-system emulator. It should be clean and sharp (native resolution, proper AA, no jaggies), run at 60 fps or more, and play best on a gamepad. That includes the 360 build's own aim assist and stick tuning, controller-first menus, and working well on a TV or Steam Deck.
 
 **Order:** Quake 4 first, F.E.A.R. second (`../fear360-recomp`). Quake 4 has much better reference source (see below), and the runtime we build for it carries straight over to F.E.A.R.

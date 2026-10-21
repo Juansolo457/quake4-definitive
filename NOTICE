@@ -1,0 +1,19 @@
+Quake 4 Definitive Edition: licensing notice
+
+The MIT license in LICENSE covers this repository's own files: tools/, docs/,
+config/ and the top-level files.
+
+patches/openq4/*.patch modify openQ4 (https://github.com/themuffinator/openQ4)
+and are licensed like the files they change:
+  - engine sources (src/framework, src/sys, src/renderer, ...): GNU GPL v3 or later
+  - game sources (src/game, src/mpgame), derived from the Quake 4 SDK:
+    the id Software / Raven Software Quake 4 SDK EULA
+  - content (content/baseoq4/...): as published by openQ4
+
+No game assets, executables or data from Quake 4 (PC or Xbox 360) are
+distributed here. Analysis tools operate on the user's own copy, and their
+outputs stay local.
+
+Quake 4 is a trademark of ZeniMax Media / id Software. This project is not
+affiliated with or endorsed by id Software, Raven Software, Bethesda,
+ZeniMax Media, Activision or Microsoft.

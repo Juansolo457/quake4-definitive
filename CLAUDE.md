@@ -1,6 +1,6 @@
-# quake4-360-recomp
+# Quake 4 Definitive Edition (GitHub: quake4-definitive)
 
-Static recompilation of the Xbox 360 release of Quake 4 to native Windows/Linux (XenonRecomp + XenosRecomp style), keeping the 360 build's controller handling. The roadmap is in [docs/PLAN.md](docs/PLAN.md). Disc dumping is in [docs/RIPPING.md](docs/RIPPING.md). Sister project: `../fear360-recomp`, which will likely share runtime pieces.
+openQ4 patches + PC assets + the Xbox 360 controller feel, recovered by targeted reverse engineering of the 360 `default.xex`. This is **not a recompilation or a full decompilation**; that approach is shelved here and planned for the sister project `../fear360-recomp`. Current state: [docs/PROGRESS.md](docs/PROGRESS.md). Original roadmap: [docs/PLAN.md](docs/PLAN.md). Disc dumping: [docs/RIPPING.md](docs/RIPPING.md). The repo is public: never commit game data, proprietary binaries, or details on where game copies came from.
 
 ## Hard rules
 - Never commit game data: ISOs, XEX files, `.pk4`s, extracted assets, or generated `ppc/` code.
