@@ -1,0 +1,200 @@
+From e2edff4c6f99bec33cc921643529cfae9e8623c2 Mon Sep 17 00:00:00 2001
+From: Juansolo457 <5344231+Juansolo457@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 14:47:31 -0700
+Subject: [PATCH] SDL3: keep every gamepad open and follow the one in use
+
+openQ4 opened only the first SDL gamepad. SDL3 reports events only for opened
+gamepads, so on PCs where virtual pads (ViGEm, Steam, Oculus) enumerate first the
+real controller was never heard. Open the others on standby and make a standby
+pad active on its first button press or half-travel stick/trigger motion.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/sys/sdl3/sdl3_backend.cpp | 110 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 110 insertions(+)
+
+diff --git a/src/sys/sdl3/sdl3_backend.cpp b/src/sys/sdl3/sdl3_backend.cpp
+index c4cbe30..84d6054 100644
+--- a/src/sys/sdl3/sdl3_backend.cpp
++++ b/src/sys/sdl3/sdl3_backend.cpp
+@@ -161,6 +161,13 @@ static SDL_Gamepad *s_sdlGamepad = NULL;
+ static SDL_Joystick *s_sdlJoystick = NULL;
+ static SDL_JoystickID s_sdlGamepadId = 0;
+ static SDL_JoystickID s_sdlJoystickId = 0;
++// Every other connected gamepad stays open on standby: SDL only reports events for
++// opened gamepads, and virtual pads (ViGEm, Steam, Oculus) often enumerate before the
++// real controller.  The first deliberate input on a standby pad makes it the active one.
++static const int SDL3_MAX_STANDBY_GAMEPADS = 8;
++static SDL_Gamepad *s_sdlStandbyGamepads[SDL3_MAX_STANDBY_GAMEPADS] = {};
++static SDL_JoystickID s_sdlStandbyGamepadIds[SDL3_MAX_STANDBY_GAMEPADS] = {};
++static int s_sdlNumStandbyGamepads = 0;
+ static bool s_sdlDiagnosticCommandsRegistered = false;
+ static bool s_sdlDisplaySummaryLogged = false;
+ static bool s_sdlVideoDriverSummaryLogged = false;
+@@ -2668,11 +2675,57 @@ static const char *SDL3_GamepadFamily(SDL_Gamepad *pad) {
+ 	}
+ }
+ 
++static int SDL3_FindStandbyGamepad(SDL_JoystickID instanceId) {
++	for (int i = 0; i < s_sdlNumStandbyGamepads; ++i) {
++		if (s_sdlStandbyGamepadIds[i] == instanceId) {
++			return i;
++		}
++	}
++	return -1;
++}
++
++static void SDL3_OpenStandbyGamepad(SDL_JoystickID instanceId) {
++	if (instanceId == s_sdlGamepadId || SDL3_FindStandbyGamepad(instanceId) >= 0 ||
++			s_sdlNumStandbyGamepads >= SDL3_MAX_STANDBY_GAMEPADS) {
++		return;
++	}
++
++	SDL_Gamepad *pad = SDL_OpenGamepad(instanceId);
++	if (!pad) {
++		return;
++	}
++	s_sdlStandbyGamepads[s_sdlNumStandbyGamepads] = pad;
++	s_sdlStandbyGamepadIds[s_sdlNumStandbyGamepads] = instanceId;
++	++s_sdlNumStandbyGamepads;
++}
++
++static void SDL3_CloseStandbyGamepad(SDL_JoystickID instanceId) {
++	const int index = SDL3_FindStandbyGamepad(instanceId);
++	if (index < 0) {
++		return;
++	}
++
++	SDL_CloseGamepad(s_sdlStandbyGamepads[index]);
++	--s_sdlNumStandbyGamepads;
++	s_sdlStandbyGamepads[index] = s_sdlStandbyGamepads[s_sdlNumStandbyGamepads];
++	s_sdlStandbyGamepadIds[index] = s_sdlStandbyGamepadIds[s_sdlNumStandbyGamepads];
++	s_sdlStandbyGamepads[s_sdlNumStandbyGamepads] = NULL;
++	s_sdlStandbyGamepadIds[s_sdlNumStandbyGamepads] = 0;
++}
++
++static void SDL3_CloseAllStandbyGamepads(void) {
++	while (s_sdlNumStandbyGamepads > 0) {
++		SDL3_CloseStandbyGamepad(s_sdlStandbyGamepadIds[0]);
++	}
++}
++
+ static bool SDL3_OpenGamepad(SDL_JoystickID instanceId) {
+ 	SDL_Gamepad *pad = SDL_OpenGamepad(instanceId);
+ 	if (!pad) {
+ 		return false;
+ 	}
++	// SDL reference counts gamepads, so dropping a standby handle keeps this one open.
++	SDL3_CloseStandbyGamepad(instanceId);
+ 
+ 	SDL3_CloseJoystick(Sys_Milliseconds());
+ 
+@@ -2724,6 +2777,51 @@ static bool SDL3_OpenJoystick(SDL_JoystickID instanceId) {
+ 	return true;
+ }
+ 
++static void SDL3_OpenStandbyGamepads(void) {
++	if (!in_joystick.GetBool() || !s_sdlGamepad) {
++		return;
++	}
++
++	int gamepadCount = 0;
++	SDL_JoystickID *gamepads = SDL_GetGamepads(&gamepadCount);
++	if (gamepads) {
++		for (int i = 0; i < gamepadCount; ++i) {
++			SDL3_OpenStandbyGamepad(gamepads[i]);
++		}
++		SDL_free(gamepads);
++	}
++	if (s_sdlNumStandbyGamepads > 0) {
++		common->Printf("controller: %d more gamepad(s) on standby; the first one used becomes active\n", s_sdlNumStandbyGamepads);
++	}
++}
++
++// A button press, or a stick or trigger pushed past half travel.  Idle virtual pads and
++// small stick drift never reach this, so they cannot steal the active slot.
++static bool SDL3_IsGamepadActivity(const SDL_Event &event) {
++	if (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
++		return true;
++	}
++	if (event.type == SDL_EVENT_GAMEPAD_AXIS_MOTION) {
++		return event.gaxis.value > 16384 || event.gaxis.value < -16384;
++	}
++	return false;
++}
++
++static void SDL3_PromoteStandbyGamepad(SDL_JoystickID instanceId, int eventTime) {
++	if (SDL3_FindStandbyGamepad(instanceId) < 0) {
++		return;
++	}
++
++	const SDL_JoystickID previousId = s_sdlGamepadId;
++	SDL3_CloseGamepad(eventTime);
++	if (!SDL3_OpenGamepad(instanceId)) {
++		SDL3_OpenFirstController();
++		return;
++	}
++	SDL3_OpenStandbyGamepad(previousId);
++	common->Printf("controller: switched to the gamepad in use\n");
++}
++
+ static void SDL3_OpenFirstController(void) {
+ 	if (!in_joystick.GetBool() || s_sdlGamepad || s_sdlJoystick) {
+ 		return;
+@@ -2741,6 +2839,7 @@ static void SDL3_OpenFirstController(void) {
+ 	}
+ 
+ 	if (s_sdlGamepad) {
++		SDL3_OpenStandbyGamepads();
+ 		return;
+ 	}
+ 
+@@ -3029,6 +3128,7 @@ static void SDL3_InitControllerSubsystems(void) {
+ }
+ 
+ static void SDL3_ShutdownControllerSubsystems(void) {
++	SDL3_CloseAllStandbyGamepads();
+ 	SDL3_CloseGamepad(Sys_Milliseconds());
+ 	SDL3_CloseJoystick(Sys_Milliseconds());
+ 
+@@ -5403,6 +5503,8 @@ bool Sys_SDL_PumpEvents(void) {
+ 				// the current device usable.
+ 				if (in_joystick.GetBool() && !s_sdlGamepad) {
+ 					(void)SDL3_OpenGamepad(event.gdevice.which);
++				} else if (in_joystick.GetBool()) {
++					SDL3_OpenStandbyGamepad(event.gdevice.which);
+ 				}
+ 				break;
+ 
+@@ -5410,6 +5512,8 @@ bool Sys_SDL_PumpEvents(void) {
+ 				if (s_sdlGamepad && event.gdevice.which == s_sdlGamepadId) {
+ 					SDL3_CloseGamepad(eventTime);
+ 					SDL3_OpenFirstController();
++				} else {
++					SDL3_CloseStandbyGamepad(event.gdevice.which);
+ 				}
+ 				break;
+ 
+@@ -5423,6 +5527,9 @@ bool Sys_SDL_PumpEvents(void) {
+ 
+ 			case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
+ 			case SDL_EVENT_GAMEPAD_BUTTON_UP:
++				if (in_joystick.GetBool() && s_sdlGamepad && event.gbutton.which != s_sdlGamepadId && SDL3_IsGamepadActivity(event)) {
++					SDL3_PromoteStandbyGamepad(event.gbutton.which, eventTime);
++				}
+ 				if (in_joystick.GetBool() && s_sdlGamepad && event.gbutton.which == s_sdlGamepadId) {
+ 					const int button = static_cast<int>(event.gbutton.button);
+ 					if (button >= 0 && button < SDL_GAMEPAD_BUTTON_COUNT) {
+@@ -5436,6 +5543,9 @@ bool Sys_SDL_PumpEvents(void) {
+ 				break;
+ 
+ 			case SDL_EVENT_GAMEPAD_AXIS_MOTION:
++				if (in_joystick.GetBool() && s_sdlGamepad && event.gaxis.which != s_sdlGamepadId && SDL3_IsGamepadActivity(event)) {
++					SDL3_PromoteStandbyGamepad(event.gaxis.which, eventTime);
++				}
+ 				if (in_joystick.GetBool() && s_sdlGamepad && event.gaxis.which == s_sdlGamepadId) {
+ 					SDL3_UpdateGamepadAxes(eventTime);
+ 				}
+-- 
+2.53.0.windows.1
+

@@ -83,6 +83,13 @@ Steam data is auto-discovered through `libraryfolders.vdf` (`OPENQ4_QUAKE4_PATH`
 - **Controller: `XInput Controller #1` opened through SDL3 gamepad** with no setup.
 - Reached the main menu with 0 errors. One harmless warning: `main_menu` sound decl not pre-cached.
 
+### Controller fix: multiple Xbox pads (patch 0002)
+On this PC SDL sees **four** Xbox-type gamepads: `XInput#0` "XInput Controller #1", two virtual "Xbox 360 Controller"s (Nefarius ViGEm / Oculus / Steam virtual pad drivers are installed), and the real Bluetooth **Xbox Series X Controller** on `XInput#3`. Upstream openQ4 opens only the first gamepad, and SDL3 only delivers events for opened gamepads, so the real pad gave **no input at all** (`listControllers` shows the list).
+
+[`patches/openq4/0002-sdl3-follow-active-gamepad.patch`](../patches/openq4/0002-sdl3-follow-active-gamepad.patch) keeps every other gamepad open on standby. The first button press, or a stick or trigger past half travel, on a standby pad makes it the active one. The log shows `controller: N more gamepad(s) on standby` at startup and `switched to the gamepad in use` on handover. Confirmed working with the user's Xbox Series X controller on 2026-10-21. This is worth sending upstream to openQ4.
+
+Note: openQ4 sets `SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS=0`, so the game window must have focus for any controller input.
+
 ### Still to measure (manually, in game)
 - [ ] fps in a heavy level (e.g. `map game/airdefense1`) on GL vs Vulkan at 4K, with `com_showFPS 1`
 - [ ] Controller feel against the 360 version: openQ4 uses dead zone 0.18 and look curve 1.35, with no aim assist or friction
