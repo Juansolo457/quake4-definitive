@@ -60,6 +60,8 @@ def main():
         "r_borderless": "0", "r_borderlessDefaultMigrated": "1", "r_mode": "-1",
         "r_customWidth": "1280", "r_customHeight": "720", "s_noSound": "1",
         "logFile": "2", "logFileName": "logs/aim_assist_smoke.log", "in_mouse": "0",
+        # a live controller would turn the view off the target; keep the window off the desktop
+        "in_joystick": "0", "r_hiddenWindow": "1",
         "developer": "1", "com_skipLoadingContinue": "1", "g_autoSkipCinematics": "1",
         "fs_basepath": str(retail), "fs_savepath": str(work), "fs_cachepath": str(work / "cache"),
         "si_gameType": "singleplayer", "pm_AimAssist": "2",

@@ -1,0 +1,281 @@
+From 2ccf06d20744127f119154a94fe97a778a1f60d0 Mon Sep 17 00:00:00 2001
+From: Juansolo457 <5344231+Juansolo457@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 15:31:57 -0700
+Subject: [PATCH] Add in_joystickXenon: the Xbox 360 build's controller feel
+
+Recovered from the Quake 4 Xbox 360 default.xex:
+- stick: round gate stretched to a square, then per-axis XInput dead zones
+  (7849 left, 8689 right) with a linear rescale to +/-127 (0x822B6030, 0x822B5F68)
+- look: three-segment acceleration curve (x<.25: .3x; to .75: slope .6; then 2.5),
+  two-sample smoothing that resets when the stick centres, m_yaw .0253 /
+  m_pitch .0209 degrees per unit per 60 Hz tic, zoomed 30% (0x821C9AA8, 0x821C9A08)
+- triggers: pressed above 64/255, no hysteresis
+
+in_xenonYawScale/PitchScale/ZoomedSlow/LookCurve/Smoothing expose the tuning.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/framework/UsercmdGen.cpp  | 80 +++++++++++++++++++++++++++++++--
+ src/sys/sdl3/sdl3_backend.cpp | 85 +++++++++++++++++++++++++++--------
+ 2 files changed, 142 insertions(+), 23 deletions(-)
+
+diff --git a/src/framework/UsercmdGen.cpp b/src/framework/UsercmdGen.cpp
+index 5962541..b67a903 100644
+--- a/src/framework/UsercmdGen.cpp
++++ b/src/framework/UsercmdGen.cpp
+@@ -414,6 +414,7 @@ private:
+ 	void			AdjustAngles( void );
+ 	void			KeyMove( void );
+ 	void			JoystickMove( void );
++	void			XenonJoystickLook( float lookAxisX, float lookAxisY, float usercmdSeconds );
+ 	void			MouseMove( void );
+ 	float			NormalizeMouseDeltasForCpi( float &mx, float &my, float &strafeMx, float &strafeMy ) const;
+ 	float			CalculateMouseSensitivity( float mx, float my, float *debugRate, float *debugPower ) const;
+@@ -485,6 +486,7 @@ private:
+ 	int				joystickAxis[MAX_JOYSTICK_AXIS];	// set by joystick events
+ 	int				scoreboardStickDirection;			// the right stick's scroll of the held scoreboard
+ 	int				scoreboardStickRepeat;				// when the held stick scrolls again
++	float			xenonLookFilter[2];					// in_joystickXenon smoothed yaw/pitch input
+ 
+ 	static idCVar	in_yawSpeed;
+ 	static idCVar	in_pitchSpeed;
+@@ -518,6 +520,12 @@ idCVar idUsercmdGenLocal::in_angleSpeedKey( "in_anglespeedkey", "1.5", CVAR_SYST
+ idCVar idUsercmdGenLocal::in_freeLook( "in_freeLook", "1", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_BOOL, "look around with mouse (reverse _mlook button)" );
+ idCVar idUsercmdGenLocal::in_alwaysRun( "in_alwaysRun", "1", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_BOOL, "always run (reverse _speed button)" );
+ static idCVar in_runDefaultMigrated( "in_runDefaultMigrated", "0", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_BOOL, "one-time migration flag for legacy openQ4 run defaults" );
++// in_joystickXenon look tuning; defaults are the Xbox 360 build's values (m_yaw, m_pitch, pm_zoomedSlow)
++static idCVar in_xenonYawScale( "in_xenonYawScale", "0.0253", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_FLOAT, "in_joystickXenon yaw: degrees per stick unit per 60 Hz tic (360 m_yaw; its menu slider ran 0.006-0.06)", 0.001f, 0.2f );
++static idCVar in_xenonPitchScale( "in_xenonPitchScale", "0.0209", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_FLOAT, "in_joystickXenon pitch: degrees per stick unit per 60 Hz tic (360 m_pitch; its menu slider ran 0.006-0.06)", 0.001f, 0.2f );
++static idCVar in_xenonZoomedSlow( "in_xenonZoomedSlow", "30", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_INTEGER, "in_joystickXenon controller turn speed percent while zoomed (360 pm_zoomedSlow)", 1, 100 );
++static idCVar in_xenonLookCurve( "in_xenonLookCurve", "1", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_BOOL, "in_joystickXenon: 1 applies the 360 three-segment look acceleration curve, 0 is linear" );
++static idCVar in_xenonSmoothing( "in_xenonSmoothing", "1", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_BOOL, "in_joystickXenon: 1 applies the 360 two-sample look smoothing, 0 turns it off" );
+ idCVar idUsercmdGenLocal::in_toggleRun( "in_toggleRun", "0", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_BOOL, "pressing _speed button toggles run on/off - only in MP" );
+ idCVar idUsercmdGenLocal::in_toggleCrouch( "in_toggleCrouch", "0", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_BOOL, "pressing _movedown button toggles player crouching/standing" );
+ idCVar idUsercmdGenLocal::in_toggleZoom( "in_toggleZoom", "0", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_BOOL, "pressing _zoom button toggles zoom on/off" );
+@@ -1181,10 +1189,15 @@ void idUsercmdGenLocal::JoystickMove( void ) {
+ 	}
+ 
+ 	if ( hasDedicatedLookAxis || !ButtonState( UB_STRAFE ) ) {
+-		// positive axis values mean stick right/down; turning right decreases yaw and
+-		// looking down increases pitch, matching the mouse and keyboard handling above
+-		viewangles[YAW] -= anglespeed * ( weaponWheel ? 140.0f : in_yawSpeed.GetFloat() ) * joystickLookSensitivity * lookAxisX;
+-		viewangles[PITCH] += anglespeed * ( weaponWheel ? 140.0f : in_pitchSpeed.GetFloat() ) * joystickLookSensitivity * lookAxisY;
++		if ( !weaponWheel && cvarSystem->GetCVarBool( "in_joystickXenon" ) ) {
++			XenonJoystickLook( lookAxisX, lookAxisY, usercmdSeconds );
++		} else {
++			// positive axis values mean stick right/down; turning right decreases yaw and
++			// looking down increases pitch, matching the mouse and keyboard handling above
++			viewangles[YAW] -= anglespeed * ( weaponWheel ? 140.0f : in_yawSpeed.GetFloat() ) * joystickLookSensitivity * lookAxisX;
++			viewangles[PITCH] += anglespeed * ( weaponWheel ? 140.0f : in_pitchSpeed.GetFloat() ) * joystickLookSensitivity * lookAxisY;
++			xenonLookFilter[0] = xenonLookFilter[1] = 0.0f;
++		}
+ 	}
+ 
+ 	if ( hasDedicatedLookAxis ) {
+@@ -1200,6 +1213,64 @@ void idUsercmdGenLocal::JoystickMove( void ) {
+ 	cmd.upmove = idMath::ClampChar( cmd.upmove + joystickAxis[AXIS_UP] );
+ }
+ 
++/*
++=================
++Xenon_LookCurve
++
++The Xbox 360 build's look response (default.xex 0x821C9A08): slow for fine aim
++over the first quarter of the stick, then a steep ramp over the last quarter.
++=================
++*/
++static float Xenon_LookCurve( float axis ) {
++	const float magnitude = idMath::Fabs( axis );
++	float curved;
++	if ( magnitude < 0.25f ) {
++		curved = magnitude * 0.3f;
++	} else if ( magnitude < 0.75f ) {
++		curved = 0.075f + ( magnitude - 0.25f ) * 0.6f;
++	} else {
++		curved = 0.375f + ( magnitude - 0.75f ) * 2.5f;
++	}
++	return axis < 0.0f ? -curved : curved;
++}
++
++/*
++=================
++idUsercmdGenLocal::XenonJoystickLook
++
++in_joystickXenon: the Xbox 360 build's controller look (default.xex 0x821C9AA8).
++Each axis goes through the 360 curve and a filter that averages it with the previous
++tic's value (reset when the stick centres), then turns the view by m_yaw / m_pitch
++degrees per stick unit per 60 Hz tic.  The 360 scaled that by its SetSlowJoystick
++percent: pm_zoomedSlow while zoomed, the aim assist friction otherwise.
++=================
++*/
++void idUsercmdGenLocal::XenonJoystickLook( float lookAxisX, float lookAxisY, float usercmdSeconds ) {
++	const float tics = usercmdSeconds * static_cast<float>( USERCMD_HZ );
++	const bool curve = in_xenonLookCurve.GetBool();
++	const float input[2] = {
++		curve ? Xenon_LookCurve( lookAxisX ) : lookAxisX,
++		curve ? Xenon_LookCurve( lookAxisY ) : lookAxisY
++	};
++	const bool centered[2] = { lookAxisX == 0.0f, lookAxisY == 0.0f };
++
++	// the 360 ran filter = ( filter + input ) * 0.5 once per tic; keep that rate when
++	// usercmds cover more or less than one tic
++	const float keep = in_xenonSmoothing.GetBool() ? idMath::Pow( 0.5f, tics ) : 0.0f;
++	for ( int i = 0; i < 2; i++ ) {
++		xenonLookFilter[i] = centered[i] ? 0.0f : xenonLookFilter[i] * keep + input[i] * ( 1.0f - keep );
++	}
++
++	float slow = GetJoystickSlowScale();
++	if ( cvarSystem->GetCVarInteger( "pm_isZoomed" ) > 0 ) {
++		slow = static_cast<float>( idMath::ClampInt( 1, 100, in_xenonZoomedSlow.GetInteger() ) ) * 0.01f;
++	}
++
++	// stick units are the 360's +/-127 axis range
++	viewangles[YAW] -= in_xenonYawScale.GetFloat() * 127.0f * xenonLookFilter[0] * slow * tics;
++	viewangles[PITCH] += in_xenonPitchScale.GetFloat() * 127.0f * xenonLookFilter[1] * slow * tics;
++}
++
+ /*
+ ==============
+ idUsercmdGenLocal::CmdButtons
+@@ -1453,6 +1524,7 @@ void idUsercmdGenLocal::Clear( void ) {
+ 
+ 	scoreboardStickDirection = 0;
+ 	scoreboardStickRepeat = 0;
++	xenonLookFilter[0] = xenonLookFilter[1] = 0.0f;
+ }
+ 
+ /*
+diff --git a/src/sys/sdl3/sdl3_backend.cpp b/src/sys/sdl3/sdl3_backend.cpp
+index 84d6054..b19694b 100644
+--- a/src/sys/sdl3/sdl3_backend.cpp
++++ b/src/sys/sdl3/sdl3_backend.cpp
+@@ -190,6 +190,8 @@ static idCVar in_gamepadFamily("in_gamepadFamily", "none", CVAR_SYSTEM | CVAR_RO
+ 	"nintendo, steamdeck or generic");
+ int Sys_SDL_GamepadGlyphFamily(int faceLabels[4]);
+ static idCVar in_joystickDeadZone("in_joystickDeadZone", "0.18", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_FLOAT, "joystick axis dead zone", 0.0f, 0.95f);
++static idCVar in_joystickXenon("in_joystickXenon", "0", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_BOOL, "Xbox 360 Quake 4 controller feel: square stick gate, per-axis XInput dead zones, 360 look curve, "
++	"smoothing and speeds (in_xenon*), 360 trigger threshold; replaces in_joystickDeadZone, curves and look sensitivity");
+ static idCVar in_joystickTriggerThreshold("in_joystickTriggerThreshold", "0.35", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_FLOAT, "trigger button press threshold", 0.0f, 1.0f);
+ static idCVar in_joystickLookSensitivity("in_joystickLookSensitivity", "0.75", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_FLOAT, "controller look sensitivity scale", 0.1f, 4.0f);
+ static idCVar in_joystickLookCurve("in_joystickLookCurve", "1.35", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_FLOAT, "controller look response curve", 1.0f, 3.0f);
+@@ -1700,6 +1702,39 @@ static void SDL3_NormalizeStickAxes(Sint16 rawX, Sint16 rawY, float deadZone, fl
+ 	outY = SDL3_AxisFloatToJoystickValue(y * unitScale);
+ }
+ 
++// in_joystickXenon stick processing, from the Xbox 360 build (default.xex 0x822B6030 and
++// 0x822B5F68).  The stick vector is first stretched from the round gate to a square, so a
++// full diagonal reaches full deflection on both axes; then each axis has its own XInput
++// dead zone with a linear rescale to the +/-127 range.  The 360 truncates to a short
++// between the two steps and to an int at the end.
++static const float SDL3_XENON_LEFT_THUMB_DEADZONE = 7849.0f;	// XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE
++static const float SDL3_XENON_RIGHT_THUMB_DEADZONE = 8689.0f;	// XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE
++
++static int SDL3_XenonAxisDeadZone(float value, float deadZone) {
++	if (value > deadZone) {
++		return static_cast<int>((value - deadZone) / (32767.0f - deadZone) * 127.0f);
++	}
++	if (value < -deadZone) {
++		return static_cast<int>((value + deadZone) / (32767.0f - deadZone) * 127.0f);
++	}
++	return 0;
++}
++
++static void SDL3_XenonStickAxes(Sint16 rawX, Sint16 rawY, bool rightStick, int &outX, int &outY) {
++	float x = static_cast<float>(rawX);
++	float y = static_cast<float>(rawY);
++	const float major = Max(fabsf(x), fabsf(y));
++	if (major > 0.0f) {
++		const float scale = sqrtf(x * x + y * y) / major;
++		x = SDL3_ClampRange(x * scale, -32767.0f, 32767.0f);
++		y = SDL3_ClampRange(y * scale, -32767.0f, 32767.0f);
++	}
++
++	const float deadZone = rightStick ? SDL3_XENON_RIGHT_THUMB_DEADZONE : SDL3_XENON_LEFT_THUMB_DEADZONE;
++	outX = SDL3_XenonAxisDeadZone(static_cast<float>(static_cast<int>(x)), deadZone);
++	outY = SDL3_XenonAxisDeadZone(static_cast<float>(static_cast<int>(y)), deadZone);
++}
++
+ static int SDL3_NormalizeSignedAxis(Sint16 value, float deadZone) {
+ 	int x = 0;
+ 	int y = 0;
+@@ -1929,8 +1964,13 @@ static bool SDL3_TriggerButtonIsDown(int triggerValue, bool wasDown, int pressTh
+ static void SDL3_UpdateTriggerButtons(int leftTrigger, int rightTrigger, int eventTime) {
+ 	const float threshold = SDL3_ClampUnit(in_joystickTriggerThreshold.GetFloat());
+ 	const int pressThreshold = static_cast<int>(roundf(threshold * 127.0f));
+-	const bool leftDown = SDL3_TriggerButtonIsDown(leftTrigger, s_gamepadLeftTriggerDown, pressThreshold);
+-	const bool rightDown = SDL3_TriggerButtonIsDown(rightTrigger, s_gamepadRightTriggerDown, pressThreshold);
++	bool leftDown = SDL3_TriggerButtonIsDown(leftTrigger, s_gamepadLeftTriggerDown, pressThreshold);
++	bool rightDown = SDL3_TriggerButtonIsDown(rightTrigger, s_gamepadRightTriggerDown, pressThreshold);
++	if (in_joystickXenon.GetBool()) {
++		// the 360 build counts a trigger byte above 64 of 255 as pressed, with no release hysteresis
++		leftDown = leftTrigger * 255 > 64 * 127;
++		rightDown = rightTrigger * 255 > 64 * 127;
++	}
+ 
+ 	if (leftDown != s_gamepadLeftTriggerDown) {
+ 		s_gamepadLeftTriggerDown = leftDown;
+@@ -1963,22 +2003,28 @@ static void SDL3_UpdateGamepadAxes(int eventTime) {
+ 	int lookX = 0;
+ 	int lookY = 0;
+ 
+-	SDL3_NormalizeStickAxes(
+-		SDL_GetGamepadAxis(s_sdlGamepad, moveAxisX),
+-		SDL_GetGamepadAxis(s_sdlGamepad, moveAxisY),
+-		deadZone,
+-		in_joystickMoveCurve.GetFloat(),
+-		1.0f,
+-		moveX,
+-		moveY);
+-	SDL3_NormalizeStickAxes(
+-		rawLookX,
+-		rawLookY,
+-		deadZone,
+-		in_joystickLookCurve.GetFloat(),
+-		1.0f,
+-		lookX,
+-		lookY);
++	if (in_joystickXenon.GetBool()) {
++		// dead zones belong to the physical stick, so southpaw swaps them with the roles
++		SDL3_XenonStickAxes(SDL_GetGamepadAxis(s_sdlGamepad, moveAxisX), SDL_GetGamepadAxis(s_sdlGamepad, moveAxisY), southpaw, moveX, moveY);
++		SDL3_XenonStickAxes(rawLookX, rawLookY, !southpaw, lookX, lookY);
++	} else {
++		SDL3_NormalizeStickAxes(
++			SDL_GetGamepadAxis(s_sdlGamepad, moveAxisX),
++			SDL_GetGamepadAxis(s_sdlGamepad, moveAxisY),
++			deadZone,
++			in_joystickMoveCurve.GetFloat(),
++			1.0f,
++			moveX,
++			moveY);
++		SDL3_NormalizeStickAxes(
++			rawLookX,
++			rawLookY,
++			deadZone,
++			in_joystickLookCurve.GetFloat(),
++			1.0f,
++			lookX,
++			lookY);
++	}
+ 
+ 	moveY = -moveY;
+ 	if (in_joystickInvertLook.GetBool()) {
+@@ -5201,7 +5247,7 @@ bool Sys_SDL_PumpEvents(void) {
+ 		in_touchpadSensitivity.ClearModified();
+ 		in_touchscreen.ClearModified();
+ 	}
+-	if (in_joystickDeadZone.IsModified() || in_joystickTriggerThreshold.IsModified() ||
++	if (in_joystickDeadZone.IsModified() || in_joystickTriggerThreshold.IsModified() || in_joystickXenon.IsModified() ||
+ 			in_joystickLookSensitivity.IsModified() || in_joystickLookCurve.IsModified() ||
+ 			in_joystickMoveCurve.IsModified() || in_joystickInvertLook.IsModified() ||
+ 			in_joystickSouthpaw.IsModified() || in_joystickUseDedicatedLookAxes.IsModified() ||
+@@ -5216,6 +5262,7 @@ bool Sys_SDL_PumpEvents(void) {
+ 		}
+ 		in_joystickDeadZone.ClearModified();
+ 		in_joystickTriggerThreshold.ClearModified();
++		in_joystickXenon.ClearModified();
+ 		in_joystickLookSensitivity.ClearModified();
+ 		in_joystickLookCurve.ClearModified();
+ 		in_joystickMoveCurve.ClearModified();
+-- 
+2.53.0.windows.1
+

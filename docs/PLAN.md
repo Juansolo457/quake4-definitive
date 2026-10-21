@@ -65,6 +65,9 @@ The Q4 SDK game code in openQ4 still contains the **360 aim assist source** (`#i
 
 The tracks share the recon work. B gives a playable result within weeks, A within months.
 
+### Update after M1 recon: "definitive edition" direction (2026-10-21)
+The 360 game logic matches the SDK. The differences that matter for feel are all in input tuning (see [X360_CONTROLS.md](X360_CONTROLS.md)), and they're now ported into openQ4 (`in_joystickXenon`). The 360 textures were *downsized* (512 px cap) compared with PC. So the user is leaning towards a **"definitive edition"**: openQ4 + PC assets + the 360 controller feel, plus modern controller UX (Xbox/PlayStation glyphs, a full controller settings menu, FOV), in place of a full recomp. The recomp (Track A) stays on the shelf as the way to recover anything else 360-specific, such as menus, vehicle aim assist, or movement tuning. Next: glyphs and a settings menu, then a full-campaign playthrough test.
+
 ---
 
 ## 4. Quality targets
