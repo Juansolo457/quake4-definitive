@@ -23,6 +23,7 @@ So this became a **"definitive edition"**: openQ4 + PC assets + the 360 controll
 - Found the 360 aim assist in the SDK's `_XENON` code: a target cone (10% of the view, 1000 units), a line-of-sight check, and turn **friction** (50%) through `usercmdGen->SetSlowJoystick`.
 - Compiled it for PC behind `pm_AimAssist`, rebuilt the missing `rvWeapon::AllowAutoAim`/`GetAutoAimFOV`, and bridged friction to the engine with a cvar (`pm_joystickSlow`, the same pattern as `pm_isZoomed`).
 - Smoke test (`tools/aim_assist_smoke.py`): friction 0 → 50 on target → 0 with assist off. Passes.
+- **Bullet bend (patch 0009):** recovered from the 360's `rvWeapon::Attack`. When the crosshair is near but not on an enemy, each shot leaves the muzzle toward the enemy joint nearest the crosshair (chest height without joints). Teammates under the crosshair are never shot past. `pm_AimAssistBump`/`Threshold` turned out to be dead cvars on the 360 too. PC limits it to single player with a controller. Aim Assist is now No / Slowdown Only / Full (360). Smoke test `tools/aim_assist_bend_smoke.py` passes. Details: [AIM_ASSIST.md](AIM_ASSIST.md#muzzle-aim-the-360-bullet-bend-patch-0009).
 
 ### 3. Controller detection fix (patch 0002)
 - The test PC had four Xbox-type pads (virtual ViGEm/Steam/Oculus pads plus the real Series X pad). openQ4 opened only the first, so the real pad was dead. Now every pad stays open and the one you press becomes active.
@@ -66,7 +67,7 @@ So this became a **"definitive edition"**: openQ4 + PC assets + the 360 controll
 2. **v0.1 release** with a ready-to-run build, then outreach (PCGamingWiki text ready in [OUTREACH.md](OUTREACH.md)).
 3. **360 in-world screens:** "Interactive / Press Use / USE D-PAD" prompts and D-pad navigation.
 4. **Legacy stick layouts and 360 button presets.**
-5. **More recon:** aim-assist bullet bend (`pm_AimAssistBump`/`Threshold`, in progress), vehicle aim assist, 360 walk/run threshold.
+5. **More recon:** vehicle aim assist (`0x82564300`), 360 walk/run threshold, per-weapon `aimAssistFOV` values from the 360 weapon defs.
 6. **Linux:** build the patched openQ4 and test.
 7. **Upstream:** offer patches 0002 (multi-pad), 0006 (settings navigation) and the hover fix to openQ4.
 8. **Performance:** play a few levels with `-PerfTrace` and read the report before changing any defaults.

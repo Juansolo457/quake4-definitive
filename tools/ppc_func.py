@@ -84,7 +84,7 @@ def disassemble(image, address):
             val[rd] = target
             s = image.string(target)
             note = f'"{s}"' if s else f"&0x{target:08X}"
-        elif op in (48, 50) and base is not None:          # lfs / lfd
+        elif op in (48, 50) and base is not None and 0 <= ((base + simm) & 0xFFFFFFFF) - BASE < len(image.data) - 8:   # lfs / lfd
             target = (base + simm) & 0xFFFFFFFF
             if op == 48:
                 note = f"= {struct.unpack_from('>f', image.data, target - BASE)[0]:g}f  @0x{target:08X}"

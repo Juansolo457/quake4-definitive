@@ -31,10 +31,10 @@ The game DLL talks to the engine through a cvar, the same pattern PC Quake 4 alr
 
 | Cvar | Default | Meaning |
 |---|---|---|
-| `pm_AimAssist` | 2 | 0 off; 1 or 2 on. On 360, 1 and 2 picked view vs muzzle correction, which isn't in the SDK (see gaps). |
+| `pm_AimAssist` | 2 | 0 off; 1 target focus and friction; 2 also the 360 muzzle aim (patch 0009, below). |
 | `pm_AimAssistSlow` | 50 | Controller turn speed % while on target (friction) |
 | `pm_AimAssistDistance` | 1000 | Max range (units) |
-| `pm_AimAssistFOV` | 10 | Cone size, % of vertical half-FOV (per weapon: `autoAimFOV` def key) |
+| `pm_AimAssistFOV` | 10 | Unused unless `pm_AimAssistTest 1`; the cone is the weapon def key `aimAssistFOV` (default 10% of vertical half-FOV) |
 | `pm_showAimAssist` | 0 | Draws the cone (red box around the crosshair) |
 | `pm_joystickSlow` | (runtime) | Bridge: current friction %, 0 = none |
 
@@ -44,14 +44,32 @@ The game DLL talks to the engine through a cvar, the same pattern PC Quake 4 alr
 
 **Not yet verified:** that the stick actually turns at half speed on target. The engine multiply is a one-line change in `JoystickMove`, but it needs someone with a controller to try it. Use `pm_showAimAssist 1`, sweep the crosshair across an enemy, and compare with `pm_AimAssist 0`.
 
+## Muzzle aim, the 360 "bullet bend" (patch 0009)
+
+**How it was found.** Scanning `default.xex` for code that touches the aim-assist cvars showed that nothing reads `pm_AimAssistBump` or `pm_AimAssistThreshold` on the 360 either: their only references are the cvar constructors. The 360 game code looks these cvars up by name instead (`cvarSystem->GetCVarInteger("pm_AimAssist…")`). Following those name strings led to four functions. One of them is `rvWeapon::Attack` (`0x8250D670`, named by its `"rvWeapon::Attack"` profiling string), and it reads `pm_AimAssistDistance`, which PC `Attack` never does.
+
+**What it does.** After `Attack` places the muzzle, and only if the weapon's `AllowAutoAim()` (vtable `+0x2C`, the same call the player code uses for the `autoaim` crosshair state) is true and the player has a `bestEnemy`:
+1. Trace from the eye along the view, `pm_AimAssistDistance` units, with mask `0x801` (`MASK_SHOT_RENDERMODEL`). A hit on a bound part counts as its bind master.
+2. If the trace hits the enemy, nothing changes.
+3. If it hits a teammate (the `aiManager.GetAllyTeam(team)` list, walked through `teamNode`), the shot goes to the end of the view ray, never past the teammate.
+4. Otherwise the eye and the ray end are moved into the enemy's model space. `0x824421A0` loops over every joint (`idAnimator::GetJointTransform`, `0x82441A70`) and keeps the one with the largest `dot(normalize(joint - eye), rayDir)`. That's the body part nearest the crosshair. If it's joint 1 or later, the target is its world position (`idAnimatedEntity::GetJointWorldTransform`, `0x823F6408`). If not, the target is the enemy's origin + 32 units up.
+5. The muzzle axis becomes `(target - muzzleOrigin).ToMat3()`, for hitscan and projectile weapons alike.
+
+The aim cone (`bestEnemy`) is the weapon's `aimAssistFOV` % (default 10) of the half view angle, about ±4°. So shots bend by a few degrees at most, and a crosshair that's already on the enemy is left alone, which keeps headshots.
+
+**Differences from the 360.** The 360 applied this for every input and in multiplayer. On PC it's single player only, and only when the last input was a controller (the engine's `ui_radialStickActive` flag), so mouse aim is never bent. The Settings row is now **No / Slowdown Only / Full (360)** (`pm_AimAssist` 0/1/2).
+
+**Testing.** `python -I tools/aim_assist_bend_smoke.py <exe> "<Quake 4 install>" <work dir>` passed 2 of 2 runs. It checks four cases: off target the shot turns toward a joint (chest 12.2°, a hand 3.3°); mode 1 and mouse input give no turn; with the crosshair on the enemy there's no turn. The friction test still passes. In game, `pm_showAimAssist 1` logs the chosen joint and draws each corrected shot as a yellow arrow, and the cheat command `testMuzzleAim [aim]` prints (and optionally aims at) where a shot would go. **Not verified yet:** the feel in play with a controller.
+
 ## Known gaps (need the 360 disc)
 
-1. **View/muzzle correction.** `pm_AimAssist 1/2`, `pm_AimAssistBump` and `pm_AimAssistThreshold` are declared but no SDK code uses them. The 360 build may bend the shot towards `bestEnemy`. Recover this from `default.xex` (search for xrefs to the `pm_AimAssistBump` string).
+1. ~~View/muzzle correction~~: done (patch 0009). `pm_AimAssist 1` ("change player view method") has no code on the 360 either, so on PC it means friction only.
 2. **360 stick tuning.** openQ4's dead zone (0.18) and look curve (1.35) are its own. The 360 values live in the engine's `idUsercmdGen`, which is only in the XEX.
-3. **Per-weapon cones.** The 360 weapon defs may set `autoAimFOV`. PC defs don't, so the cone is a flat 10% for now.
+3. **Per-weapon cones.** The 360 key is `aimAssistFOV` (patch 0009 reads it). PC weapon defs don't set it, so the cone is a flat 10% unless the 360 defs are checked for values.
 4. **Shipped defaults.** The 360 `default.cfg` may override the SDK defaults above.
 5. **Multiplayer.** The MP aim-assist block (the `gameLocal.isMultiplayer` path in `game/Player.cpp`, and `mpgame/`) is still `_XENON`-only, on purpose, because of fairness against mouse players.
-6. **Menu toggle.** For now it's a cvar only. A row in `Settings → Game Options → Controller` (`content/baseoq4/pak0/guis/menu/settings/game.gui`) is a follow-up.
+6. ~~Menu toggle~~: done (patch 0004; three-way since 0009).
+7. **Vehicle aim assist** (`pm_VehicleAimAssistFOV`/`Distance`, used by the 360's vehicle weapon code at `0x82564300`): not ported yet.
 
 ## Licensing note
 The patch touches `src/game`, which openQ4 derives from the Quake 4 SDK (id/Raven SDK EULA, not GPL). That's the same terms openQ4 itself publishes under. Keep it as a patch against openQ4 and don't copy SDK files into this repo.

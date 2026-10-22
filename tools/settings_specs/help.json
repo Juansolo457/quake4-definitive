@@ -26,7 +26,7 @@
     "set_game_msenscap": "Upper limit for accelerated sensitivity. 0 means no limit.",
     "set_game_controller_enabled": "Use a gamepad. No ignores all controllers.",
     "set_game_controller_xenon": "The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve.",
-    "set_game_controller_aimassist": "The Xbox 360 aim assist: stick turning slows while your crosshair is over an enemy, so it is easier to stay on target.",
+    "set_game_controller_aimassist": "Xbox 360 aim assist. Slowdown Only: stick turning slows over an enemy. Full: shots also bend to the enemy body part nearest your crosshair.",
     "set_game_controller_aimassist_friction": "Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off.",
     "set_game_controller_xenon_yaw": "360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default.",
     "set_game_controller_xenon_pitch": "360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default.",

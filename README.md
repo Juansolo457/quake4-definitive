@@ -25,6 +25,7 @@ Not a recompilation. Not a full decompilation.
 |---|---|
 | ✅ 360 controller feel: square stick gate, XInput dead zones (7849 / 8689), 3-step look curve, smoothing, 360 turn speeds, 30% zoomed speed | patch 0003 · tuning ongoing |
 | ✅ 360 aim assist (target cone + 50% friction) | patch 0001 |
+| ✅ 360 bullet bend: shots aim at the enemy body part nearest the crosshair (controller only) | patch 0009 |
 | ✅ Real controller found among virtual pads (ViGEm, Steam) | patch 0002 |
 | ✅ Settings menu rows for all of the above, plus Field of View and button prompt style | patches 0004–0005 |
 | ✅ Settings pages fully usable with a controller; help line explains each option | patches 0006–0007 |
@@ -32,7 +33,7 @@ Not a recompilation. Not a full decompilation.
 | ✅ Graphics defaults: 4K, 240 fps cap, 4× MSAA + SMAA, 16× AF, soft shadows | `config/definitive.cfg` |
 | ✅ Uncompressed textures, hi-res packs load | `image_usePrecompressedTextures 2` |
 | ⏳ 360 in-world screen prompts, Legacy stick layouts, button presets | next |
-| ⏳ Aim-assist bullet bend (in progress), vehicle aim assist | more reverse engineering |
+| ⏳ Vehicle aim assist | more reverse engineering |
 | ⏳ Linux | untested |
 
 Full debrief: [docs/PROGRESS.md](docs/PROGRESS.md).
@@ -59,7 +60,7 @@ Add `-PerfTrace` to record a performance trace, then `python -I tools/perf_repor
 | Row | Cvar |
 |---|---|
 | 360 Controller Feel | `in_joystickXenon` |
-| Aim Assist | `pm_AimAssist` |
+| Aim Assist | `pm_AimAssist`: No / Slowdown Only / Full (360, adds bullet bend) |
 | Aim Assist Friction | `pm_AimAssistSlow` (lower = stickier) |
 | 360 Horizontal / Vertical Speed | `in_xenonYawScale` / `in_xenonPitchScale` (360 range 0.006–0.06) |
 | 360 Zoomed Speed | `in_xenonZoomedSlow` |
