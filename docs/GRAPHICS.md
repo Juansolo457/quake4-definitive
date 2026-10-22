@@ -2,6 +2,18 @@
 
 Applied by [`tools/launch_definitive.ps1`](../tools/launch_definitive.ps1) from [`config/definitive.cfg`](../config/definitive.cfg) on a profile's first launch. After that, the in-game settings win (`-Reapply` applies them again).
 
+## Graphics tiers
+The defaults below are the **ultra** tier, tuned on an RTX 4090. Not every PC has that headroom, so on first launch the launcher reads the largest graphics card's video memory and applies a tier file after `definitive.cfg`. It uses the registry's exact 64-bit size; Windows' `AdapterRAM` stops at 4 GB.
+
+| Tier | Video memory | On top of the defaults |
+|---|---|---|
+| ultra | 12 GB or more | nothing (4× MSAA + SMAA, 2048 shadow maps, 16× AF, 240 fps cap, uncompressed textures and hi-res packs) |
+| high | 8 to 12 GB | `tier_high.cfg`: 2× MSAA, 1024 shadow maps, 8× AF, 144 fps cap |
+| medium | 4 to 8 GB, or unknown | `tier_medium.cfg`: SMAA only, stock stencil shadows, 4× AF, compressed textures (about a quarter of the memory; hi-res packs not loaded), 120 fps cap |
+| low | under 4 GB | `tier_low.cfg`: as medium, plus 85% render scale resolved back to native by TAA, 2× AF, 60 fps cap |
+
+Picture (gamma/brightness), FOV and the controller settings are the same in every tier. The values follow openQ4's own performance presets (quality / balanced / performance), and each tier sets the matching menu label. `pwsh tools/launch_definitive.ps1 -ShowTier` prints the choice; `-Tier high` (and so on) forces one, together with `-Reapply` for an existing profile. Video memory is a stand-in for GPU speed, so a fast 8 GB card may want `-Tier ultra` and a slow 12 GB one `-Tier high`.
+
 ## Decisions (user, 2026-10-21)
 - **Frame rate:** cap at **240** (`com_maxfps 240`), never higher. Adaptive vsync (`r_swapInterval -1`).
 - **FOV:** **90** base (`g_fov`, 4:3 basis, about 106° horizontal at 16:9); lower it only if performance needs it.

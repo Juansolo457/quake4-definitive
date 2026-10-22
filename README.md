@@ -30,7 +30,7 @@ Not a recompilation. Not a full decompilation.
 | ✅ Settings menu rows for all of the above, plus Field of View and button prompt style | patches 0004–0005 |
 | ✅ Settings pages fully usable with a controller (focus outline, LB/RB tabs, LT/RT scroll); help line explains each option | patches 0006–0007, 0013 |
 | ✅ Performance trace: frame times plus Windows GPU %/VRAM per level (`-PerfTrace`) | patch 0008 |
-| ✅ Graphics defaults: 4K, 240 fps cap, 4× MSAA + SMAA, 16× AF, soft shadows, 360 gamma/brightness | `config/definitive.cfg` |
+| ✅ Graphics defaults: 4K, 240 fps cap, 4× MSAA + SMAA, 16× AF, soft shadows, 360 gamma/brightness; lighter tiers picked from video memory | `config/` |
 | ✅ Uncompressed textures, hi-res packs load | `image_usePrecompressedTextures 2` |
 | ⏳ 360 in-world screen prompts, Legacy stick layouts, button presets | next |
 | ⏳ Vehicle aim assist | more reverse engineering |
@@ -51,6 +51,7 @@ Build with openQ4's `BUILDING.md` (Meson + Ninja + Visual Studio). Gotchas: [doc
 ```powershell
 pwsh tools/launch_definitive.ps1    # first launch applies the definitive defaults
 ```
+The first launch also picks a graphics tier (ultra / high / medium / low) from the GPU's video memory; `-ShowTier` shows it, `-Tier <name> -Reapply` changes it ([GRAPHICS.md](docs/GRAPHICS.md#graphics-tiers)).
 Add `-PerfTrace` to record a performance trace, then `python -I tools/perf_report.py` ([GRAPHICS.md](docs/GRAPHICS.md#gpu-usage-and-the-performance-trace)).
 
 ## Settings
