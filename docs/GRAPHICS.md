@@ -6,6 +6,7 @@ Applied by [`tools/launch_definitive.ps1`](../tools/launch_definitive.ps1) from 
 - **Frame rate:** cap at **240** (`com_maxfps 240`), never higher. Adaptive vsync (`r_swapInterval -1`).
 - **FOV:** **90** base (`g_fov`, 4:3 basis, about 106° horizontal at 16:9); lower it only if performance needs it.
 - No benchmark iteration for now. The game is old and runs well; performance work (and any rewriting, now that both the PC SDK/openQ4 source and the 360 binary are available) comes later if needed.
+- **Picture:** the 360's `r_gamma 1.3` and `r_brightness 1.2` are the default (see [below](#what-the-360-renderer-did-differently)).
 
 ## The defaults
 
@@ -17,7 +18,8 @@ Applied by [`tools/launch_definitive.ps1`](../tools/launch_definitive.ps1) from 
 | Texture source | **`image_usePrecompressedTextures 2`** | See below: uncompressed sources and hi-res packs |
 | Shadows | `r_useShadowMap 1`, `r_shadowMapSize 2048`, PCSS-lite filtering | Soft, stable shadow maps instead of hard stencil volumes (the `ultra` preset's size) |
 | Lighting | baked light grids on. SSAO, bloom, tone mapping, motion blur off | Keep Quake 4's authored look as the baseline, as openQ4's presets do |
-| Controller | `in_joystickXenon 1`, `pm_AimAssist 2`, automatic button prompts | The recovered 360 feel |
+| Picture | `r_gamma 1.3`, `r_brightness 1.2` | The Xbox 360's defaults; brighter, shinier highlights |
+| Controller | `in_joystickXenon 1`, `pm_AimAssist 3` (Full, Wide), automatic button prompts | The recovered 360 feel |
 
 **Opt-ins to try in game** (Settings > System and the console): `r_ssao 1` (ambient occlusion), `r_bloom 1`, `r_hdrToneMap 1`, `r_temporalAA 1` (TAA at native in place of SMAA), `r_renderApi vk` (Vulkan, stable on Windows).
 
@@ -71,7 +73,7 @@ The 360's renderer defaults (from `default.xex`'s cvar table) against openQ4:
 | `r_lightDetailLevel` | 9 | 0 | openQ4 skips lights *below* this level, so the 360 dropped minor lights; PC renders all |
 | `image_downSizeBumpLimit` / `SpecularLimit` | 0 (64) | 256 / 64 | 360 textures were downsized |
 
-So the one 360 look worth taking is its gamma and brightness. openQ4 applies both in a shader (they show in screenshots); a side-by-side in Hangar 1 at 1.3/1.2 is visibly brighter.
+So the one 360 look worth taking is its gamma and brightness. openQ4 applies both in a shader (they show in screenshots); a side-by-side in Hangar 1 at 1.3/1.2 is visibly brighter. They are now the definitive defaults (user decision, 2026-10-21).
 
 ## GPU usage and the performance trace
 Reported (2026-10-21): GPU usage near 40%, sometimes spiking. On the test PC (RTX 4090, 4K, 240 Hz) that's headroom, not a problem: at a 240 fps cap the GPU renders 240 frames a second and idles between them. The usage figure follows how heavy each frame is (open areas, many shadowed lights, effects) and how many frames are drawn. Levers, if needed: a lower `com_maxfps` (144 or 120 cuts GPU work roughly in proportion), `r_multiSamples 2`, `r_shadowMapSize 1024`.

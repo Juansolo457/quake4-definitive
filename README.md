@@ -30,7 +30,7 @@ Not a recompilation. Not a full decompilation.
 | ✅ Settings menu rows for all of the above, plus Field of View and button prompt style | patches 0004–0005 |
 | ✅ Settings pages fully usable with a controller (focus outline, LB/RB tabs, LT/RT scroll); help line explains each option | patches 0006–0007, 0013 |
 | ✅ Performance trace: frame times plus Windows GPU %/VRAM per level (`-PerfTrace`) | patch 0008 |
-| ✅ Graphics defaults: 4K, 240 fps cap, 4× MSAA + SMAA, 16× AF, soft shadows | `config/definitive.cfg` |
+| ✅ Graphics defaults: 4K, 240 fps cap, 4× MSAA + SMAA, 16× AF, soft shadows, 360 gamma/brightness | `config/definitive.cfg` |
 | ✅ Uncompressed textures, hi-res packs load | `image_usePrecompressedTextures 2` |
 | ⏳ 360 in-world screen prompts, Legacy stick layouts, button presets | next |
 | ⏳ Vehicle aim assist | more reverse engineering |
