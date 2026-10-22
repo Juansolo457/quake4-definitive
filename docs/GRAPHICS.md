@@ -41,7 +41,16 @@ Note: choosing a Performance Preset or "Recommended" in the menu (`applyPerforma
 | [Quake 4 4X AI Textures](https://www.moddb.com/mods/quake-4-4x-ai-textures-by-deeppurple1968) (deeppurple1968, 2020) | Older Topaz Gigapixel 4× pack, 6.3 GB |
 | [Quake 4 Hi Def](https://www.moddb.com/mods/quake-4-hi-def) (v3.3, ~14 GB) | Also replaces models and changes more. Asset parts may work, but anything relying on the stock game DLL won't run on openQ4 |
 
-**Install for openQ4:** extract the pack's folders (`textures/`, `models/`, …) into **`E:\SteamLibrary\steamapps\common\Quake 4\baseoq4\`** (create it), not `q4base`. openQ4 searches `baseoq4` first, and a Steam file verification won't delete it. Keep `image_usePrecompressedTextures 2`. **Not yet tested here:** the pack's file format (TGA vs DXT DDS) is unverified. If it turns out to be DXT `.dds`, use mode `1` instead and put the files under `baseoq4/dds/`.
+**Install for openQ4:** extract the pack's folders (`textures/`, `models/`, …) into **`<Quake 4 install>\baseoq4\`** (create it), not `q4base`. openQ4 searches `baseoq4` first, and a Steam file verification won't delete it. Keep `image_usePrecompressedTextures 2`.
+
+**Verified (2026-10-21), *textures x2*** (`textures.zip`, MD5 `44dfb87dd150bf9ece1452fc9d290f81`):
+- 6,076 `.tga` files under `textures/`, 3.19 GiB, with no executables or configs. A sample of 80 were all exactly 2× the stock size (256×256 → 512×512).
+- `game/airdefense1` with `listImages`:
+  - **mode 1:** 475 of 478 pack-covered textures loaded at **stock size as DXT1**. The pack is ignored. (This is why a ModDB commenter saw "no difference" with openQ4.)
+  - **mode 2:** **478 of 478 loaded at the pack's 2× size, uncompressed RGBA8**.
+- *models x2* (`models.1.zip`, 5.4 GB): being downloaded and tested next.
+
+ModDB limits each connection to about 1.2 MB/s. Splitting the download into ranged requests across its mirrors (7 connections) gave about 7.6 MB/s.
 
 ## Measurement note
 Automated 4K runs, both openQ4's `renderer_gameplay_benchmark.py` and my visible-window launcher `tools/bench_graphics.py`, reported a flat 60.0 fps "simulation-bound" in every configuration. openQ4 caps windows it considers hidden at 60 fps on Windows, and launches from this tool shell appear to trigger that. The numbers aren't the game's real performance and weren't used. Check in game with `com_showFPS 1` instead.
