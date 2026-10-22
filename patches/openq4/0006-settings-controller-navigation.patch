@@ -1,0 +1,702 @@
+From 009a874fd01ab2576a6a3068a2a0a1c9e14f26ad Mon Sep 17 00:00:00 2001
+From: juansolo457 <5344231+Juansolo457@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 18:27:09 -0700
+Subject: [PATCH 6/8] Settings menu: controller navigation through slider rows
+
+On the classic settings pages the D-pad and stick stopped at the first slider:
+focus moved into the slider's number box, which takes every arrow key. Up and
+down on a slider also stepped its value on the way past.
+
+- A slider's paired number box and list scrollbars are no longer focus stops; a
+  box focused by the mouse hands focus to its slider on the next D-pad press.
+- A direction reaches the focused control only if that control uses it
+  (choices and horizontal sliders: left/right; vertical sliders and lists:
+  up/down; edit boxes: left/right, plus up/down when the text wraps). Every
+  other direction moves focus.
+- A works like a click: on a choice it steps to the next value.
+- Controller focus runs the row's "<row>_hover" scripts, so the row lights up
+  (and plays its hover sound) as it does under the mouse.
+- A focused row outside a scrolled list's view asks the menu to scroll it in
+  (scrollIntoView); the menu scrolls the least that shows the whole row.
+
+menu_controller_navigation.py covers the traversal, direction ownership, row
+highlight and the scroll math.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/framework/Session_menu.cpp            |  64 +++++-
+ src/ui/EditWindow.h                       |   1 +
+ src/ui/SliderWindow.h                     |   2 +
+ src/ui/Window.cpp                         | 152 +++++++++++---
+ src/ui/Window.h                           |   1 +
+ tools/tests/menu_controller_navigation.py | 233 ++++++++++++++++++++--
+ 6 files changed, 407 insertions(+), 46 deletions(-)
+
+diff --git a/src/framework/Session_menu.cpp b/src/framework/Session_menu.cpp
+index 2fbaa28..100bfc1 100644
+--- a/src/framework/Session_menu.cpp
++++ b/src/framework/Session_menu.cpp
+@@ -384,6 +384,7 @@ static const float MAINMENU_CORPSE_TIME_PRESET_VALUES[] = {
+ };
+ 
+ static bool ApplyMainMenuSettingsScrollPage( idUserInterface *gui, const char *pageName, bool requireVisiblePage );
++static bool ScrollMainMenuSettingsRowIntoView( idUserInterface *gui, const char *contentName, int rowY, int rowHeight, int viewHeight );
+ static void SyncMainMenuSettingsScrollPages( idUserInterface *gui );
+ 
+ static int MenuControllerAbs( int value ) {
+@@ -3837,6 +3838,18 @@ void idSessionLocal::HandleMainMenuCommands( const char *menuCommand ) {
+ 			continue;
+ 		}
+ 
++		if ( !idStr::Icmp( cmd, "scrollIntoView" ) ) {
++			// scrollIntoView <content window> <row y> <row height> <view height>
++			if ( args.Argc() - icmd >= 4 ) {
++				const idStr contentName = args.Argv( icmd++ );
++				const int rowY = atoi( args.Argv( icmd++ ) );
++				const int rowHeight = atoi( args.Argv( icmd++ ) );
++				const int viewHeight = atoi( args.Argv( icmd++ ) );
++				ScrollMainMenuSettingsRowIntoView( guiActive ? guiActive : guiMainMenu, contentName.c_str(), rowY, rowHeight, viewHeight );
++			}
++			continue;
++		}
++
+ 		if ( !idStr::Icmp( cmd, "applySettingsScroll" ) ) {
+ 			idStr pageName;
+ 			if ( args.Argc() - icmd >= 1 ) {
+@@ -4472,6 +4485,15 @@ static int MainMenuSettingsSectionChoiceForScroll( const mainMenuSettingsScrollP
+ 	return 0;
+ }
+ 
++static void MainMenuSettingsScrollExtent( idUserInterface *gui, const mainMenuSettingsScrollPage_t &page, int &contentHeight, float &stepY ) {
++	contentHeight = page.contentHeight;
++	stepY = page.stepY;
++	if ( idStr::Icmp( page.name, "system" ) == 0 && gui->GetStateInt( "display_count", "0" ) <= 1 ) {
++		contentHeight = 902;
++		stepY = 19.5f;
++	}
++}
++
+ static bool ApplyMainMenuSettingsScrollPage( idUserInterface *gui, const mainMenuSettingsScrollPage_t &page, int requestedValue, bool requireVisiblePage ) {
+     if (!NativeInput_SessionCurrent()) return false;
+ 	if ( gui == NULL ) {
+@@ -4505,12 +4527,9 @@ static bool ApplyMainMenuSettingsScrollPage( idUserInterface *gui, const mainMen
+ 	MainMenuSetWindowVar( gui, page.thumbVisibleState, canScroll ? "1" : "0" );
+ 	MainMenuSetWindowVar( gui, page.thumbNoEventsState, canScroll ? "0" : "1" );
+ 
+-	int contentHeight = page.contentHeight;
+-	float stepY = page.stepY;
+-	if ( idStr::Icmp( page.name, "system" ) == 0 && gui->GetStateInt( "display_count", "0" ) <= 1 ) {
+-		contentHeight = 902;
+-		stepY = 19.5f;
+-	}
++	int contentHeight;
++	float stepY;
++	MainMenuSettingsScrollExtent( gui, page, contentHeight, stepY );
+ 
+ 	const int scrollOffset = idMath::Ftoi( stepY * static_cast<float>( scrollValue ) + 0.5f );
+ 	const int contentY = page.baseY - scrollOffset;
+@@ -4591,6 +4610,39 @@ static bool AdjustMainMenuPageScroll( idUserInterface *gui, const mainMenuSettin
+ 	return true;
+ }
+ 
++// Controller focus moved to a row outside the visible part of a settings list
++// (the GUI's scrollIntoView command). Scroll the least that shows the whole row.
++static bool ScrollMainMenuSettingsRowIntoView( idUserInterface *gui, const char *contentName, int rowY, int rowHeight, int viewHeight ) {
++	if ( gui == NULL || contentName == NULL || contentName[ 0 ] == '\0' ) {
++		return false;
++	}
++	const int nameLength = idStr::Length( contentName );
++	for ( int i = 0; i < static_cast<int>( sizeof( MAINMENU_SETTINGS_SCROLL_PAGES ) / sizeof( MAINMENU_SETTINGS_SCROLL_PAGES[ 0 ] ) ); ++i ) {
++		const mainMenuSettingsScrollPage_t &page = MAINMENU_SETTINGS_SCROLL_PAGES[ i ];
++		if ( idStr::Icmpn( page.contentRectState, contentName, nameLength ) != 0 || page.contentRectState[ nameLength ] != ':' ) {
++			continue;
++		}
++		int contentHeight;
++		float stepY;
++		MainMenuSettingsScrollExtent( gui, page, contentHeight, stepY );
++		if ( stepY <= 0.0f ) {
++			return false;
++		}
++		// The content sits at baseY - stepY * scroll inside the view.
++		const int lastShowingTop = idMath::Ftoi( idMath::Floor( static_cast<float>( page.baseY + rowY ) / stepY ) );
++		const int firstShowingBottom = idMath::Ftoi( idMath::Ceil( static_cast<float>( page.baseY + rowY + rowHeight - viewHeight ) / stepY ) );
++		const int current = idMath::ClampInt( page.minValue, page.maxValue, gui->GetStateInt( page.scrollStateName, va( "%d", page.scrollCvar->GetInteger() ) ) );
++		int next = current;
++		if ( current > lastShowingTop ) {
++			next = lastShowingTop;
++		} else if ( current < firstShowingBottom ) {
++			next = firstShowingBottom;
++		}
++		return AdjustMainMenuPageScroll( gui, page, next - current, false, false );
++	}
++	return false;
++}
++
+ static bool HandleMainMenuSettingsScrollInput( idUserInterface *gui, int key ) {
+ 	int delta = 0;
+ 	bool toStart = false;
+diff --git a/src/ui/EditWindow.h b/src/ui/EditWindow.h
+index 666d518..55a4317 100644
+--- a/src/ui/EditWindow.h
++++ b/src/ui/EditWindow.h
+@@ -54,6 +54,7 @@ public:
+ 	virtual void 		HandleBuddyUpdate(idWindow *buddy);
+ 	virtual void		Activate(bool activate, idStr &act);
+ 	bool				GetTextInputState( idRectangle &area, float &cursorOffset );
++	bool				IsWrapped() const { return wrap; }
+ 	
+ 	void				RunNamedEvent( const char* eventName );
+ 	
+diff --git a/src/ui/SliderWindow.h b/src/ui/SliderWindow.h
+index 6c335d5..9d6a8d5 100644
+--- a/src/ui/SliderWindow.h
++++ b/src/ui/SliderWindow.h
+@@ -45,6 +45,8 @@ public:
+ 
+ 	void				SetValue(float _value);
+ 	float				GetValue() { return value; };
++	bool				IsVertical() const { return vertical; }
++	bool				IsScrollbar() const { return scrollbar; }
+ 
+ 	virtual size_t		Allocated(){return idWindow::Allocated();};
+ 	virtual idWinVar *	GetWinVarByName(const char *_name, bool winLookup = false, drawWin_t** owner = NULL);
+diff --git a/src/ui/Window.cpp b/src/ui/Window.cpp
+index 2d65e97..e598143 100644
+--- a/src/ui/Window.cpp
++++ b/src/ui/Window.cpp
+@@ -252,23 +252,52 @@ static bool TranslateControllerMenuKey( const sysEvent_t *sourceEvent, sysEvent_
+ 	}
+ }
+ 
++// Settings rows pair a slider with a numeric box showing the same value. On a
++// controller the slider is the control; the box would take every D-pad press.
++static idSliderWindow *SliderForValueEdit( idWindow *window ) {
++	if ( dynamic_cast<idEditWindow *>( window ) == NULL || window->GetParent() == NULL ) {
++		return NULL;
++	}
++	idWindow *row = window->GetParent();
++	for ( int i = 0; i < row->GetChildCount(); ++i ) {
++		idSliderWindow *slider = dynamic_cast<idSliderWindow *>( row->GetChild( i ) );
++		if ( slider != NULL && !slider->IsScrollbar() ) {
++			return slider;
++		}
++	}
++	return NULL;
++}
++
+ static bool WindowConsumesDirectionalNavigation( idWindow *window, int key ) {
+ 	if ( window == NULL ) {
+ 		return false;
+ 	}
+ 
+-	if ( dynamic_cast<idChoiceWindow *>( window ) != NULL || dynamic_cast<idSliderWindow *>( window ) != NULL ) {
+-		return key == K_LEFTARROW || key == K_KP_LEFTARROW || key == K_RIGHTARROW || key == K_KP_RIGHTARROW;
++	const bool horizontal = key == K_LEFTARROW || key == K_KP_LEFTARROW || key == K_RIGHTARROW || key == K_KP_RIGHTARROW;
++	const bool vertical = key == K_UPARROW || key == K_KP_UPARROW || key == K_DOWNARROW || key == K_KP_DOWNARROW;
++
++	if ( dynamic_cast<idChoiceWindow *>( window ) != NULL ) {
++		return horizontal;
++	}
++
++	// A horizontal slider also steps on up and down, which would change the
++	// value on the way past it.
++	idSliderWindow *slider = dynamic_cast<idSliderWindow *>( window );
++	if ( slider != NULL ) {
++		return slider->IsVertical() ? vertical : horizontal;
+ 	}
+ 
+ 	if ( dynamic_cast<idListWindow *>( window ) != NULL ) {
+-		return key == K_UPARROW || key == K_KP_UPARROW || key == K_DOWNARROW || key == K_KP_DOWNARROW ||
+-			key == K_PGUP || key == K_PGDN;
++		return vertical || key == K_PGUP || key == K_PGDN;
+ 	}
+ 
+-	if ( dynamic_cast<idEditWindow *>( window ) != NULL ) {
+-		return key == K_LEFTARROW || key == K_KP_LEFTARROW || key == K_RIGHTARROW || key == K_KP_RIGHTARROW ||
+-			key == K_UPARROW || key == K_KP_UPARROW || key == K_DOWNARROW || key == K_KP_DOWNARROW ||
++	idEditWindow *edit = dynamic_cast<idEditWindow *>( window );
++	if ( edit != NULL ) {
++		if ( SliderForValueEdit( window ) != NULL ) {
++			return false;
++		}
++		// Up and down only move the text cursor in wrapped text.
++		return horizontal || ( vertical && edit->IsWrapped() ) ||
+ 			key == K_HOME || key == K_END || key == K_DEL || key == K_INS || key == K_BACKSPACE;
+ 	}
+ 
+@@ -288,13 +317,83 @@ static void CollectFocusWindows( idWindow *window, idList<idWindow *> &candidate
+ 			continue;
+ 		}
+ 		if ( child->GetFlags() & WIN_CANFOCUS ) {
+-			candidates.Append( child );
++			// Scrollbars follow the focused row, so they are not stops.
++			idSliderWindow *slider = dynamic_cast<idSliderWindow *>( child );
++			if ( SliderForValueEdit( child ) == NULL && ( slider == NULL || !slider->IsScrollbar() ) ) {
++				candidates.Append( child );
++			}
+ 		} else {
+ 			CollectFocusWindows( child, candidates );
+ 		}
+ 	}
+ }
+ 
++static void RunControllerHoverScript( idWindow *window, bool enter ) {
++	if ( enter ) {
++		window->MouseEnter();
++	} else {
++		window->MouseExit();
++	}
++	// Pass on what the script asks for (the hover sound), as mouse hover does.
++	if ( window->cmd.Length() && window->GetGui() != NULL ) {
++		window->GetGui()->GetPendingCmd() += window->cmd;
++		window->GetGui()->GetPendingCmd() += " ; ";
++		window->cmd.Clear();
++	}
++}
++
++// Settings rows light up from a separate "<row>_hover" window that only the
++// mouse reaches. Find it so controller focus lights the row too.
++static idWindow *FindRowHoverWindow( idWindow *focus ) {
++	idWindow *desktop = focus->GetGui() != NULL ? focus->GetGui()->GetDesktop() : NULL;
++	if ( desktop == NULL ) {
++		return NULL;
++	}
++	for ( idWindow *row = focus; row != NULL && row != desktop; row = row->GetParent() ) {
++		drawWin_t *hover = desktop->FindChildByName( va( "%s_hover", row->GetName() ) );
++		if ( hover != NULL && hover->win != NULL && hover->win != focus && hover->win->IsVisible() ) {
++			return hover->win;
++		}
++	}
++	return NULL;
++}
++
++static void SetControllerHover( idWindow *focus, bool enter ) {
++	if ( focus == NULL ) {
++		return;
++	}
++	RunControllerHoverScript( focus, enter );
++	idWindow *rowHover = FindRowHoverWindow( focus );
++	if ( rowHover != NULL ) {
++		RunControllerHoverScript( rowHover, enter );
++	}
++}
++
++// A focused row in a scrolled list (a clipping view around a taller content
++// window) can sit outside the view. The menu owns each list's scroll steps, so
++// ask it to bring the row into view.
++static void RequestScrollIntoView( idWindow *focus ) {
++	for ( idWindow *row = focus; row != NULL; row = row->GetParent() ) {
++		idWindow *content = row->GetParent();
++		idWindow *view = content != NULL ? content->GetParent() : NULL;
++		if ( view == NULL ) {
++			return;
++		}
++		const idRectangle &rowRect = row->GetDrawRect();
++		const idRectangle &contentRect = content->GetDrawRect();
++		const idRectangle &viewRect = view->GetDrawRect();
++		if ( ( view->GetFlags() & WIN_NOCLIP ) || contentRect.h <= viewRect.h ) {
++			continue;
++		}
++		const float top = contentRect.y + rowRect.y;
++		if ( rowRect.y >= 0.0f && ( top < 0.0f || top + rowRect.h > viewRect.h ) && focus->GetGui() != NULL ) {
++			focus->GetGui()->GetPendingCmd() += va( "scrollIntoView %s %d %d %d ; ", content->GetName(),
++				idMath::Ftoi( rowRect.y ), idMath::Ftoi( rowRect.h ), idMath::Ftoi( viewRect.h ) );
++		}
++		return;
++	}
++}
++
+ static bool NavigateFocus( idWindow *window, int direction, bool runHoverScripts = false ) {
+ 	if ( window == NULL || direction == 0 ) {
+ 		return false;
+@@ -316,10 +415,9 @@ static bool NavigateFocus( idWindow *window, int direction, bool runHoverScripts
+ 	if ( nextFocus != currentFocus ) {
+ 		window->SetFocus( nextFocus, false );
+ 		if ( runHoverScripts ) {
+-			if ( currentFocus != NULL ) {
+-				currentFocus->MouseExit();
+-			}
+-			nextFocus->MouseEnter();
++			SetControllerHover( currentFocus, false );
++			SetControllerHover( nextFocus, true );
++			RequestScrollIntoView( nextFocus );
+ 		}
+ 	}
+ 	return true;
+@@ -1214,6 +1312,11 @@ const char *idWindow::HandleEvent(const sysEvent_t *event, bool *updateVisuals)
+ 
+ 	const bool controllerEvent = TranslateControllerMenuKey( event, translatedEvent, controllerFocusDirection );
+ 	if ( controllerEvent ) {
++		// A works like a click: on a choice it steps to the next value.
++		if ( translatedEvent.evValue == K_ENTER && ( flags & WIN_DESKTOP ) &&
++			dynamic_cast<idChoiceWindow *>( GetFocusedChild() ) != NULL ) {
++			translatedEvent.evValue = K_RIGHTARROW;
++		}
+ 		event = &translatedEvent;
+ 	}
+ 
+@@ -1232,17 +1335,13 @@ const char *idWindow::HandleEvent(const sysEvent_t *event, bool *updateVisuals)
+ 		if ( controllerEvent && event->evValue2 && !gui->ControllerNavigation() && !GetCaptureChild() ) {
+ 			ClearMouseHover();
+ 			gui->SetControllerNavigation( true );
+-			if ( focusedChild != NULL ) {
+-				focusedChild->MouseEnter();
+-			}
++			SetControllerHover( focusedChild, true );
+ 		} else if ( gui->ControllerNavigation() ) {
+ 			const bool mouseMoved = event->evType == SE_MOUSE && ( event->evValue != 0 || event->evValue2 != 0 );
+ 			const bool mousePressed = event->evType == SE_KEY && event->evValue2 &&
+ 				event->evValue >= K_MOUSE1 && event->evValue <= K_MWHEELUP;
+ 			if ( mouseMoved || mousePressed ) {
+-				if ( focusedChild != NULL ) {
+-					focusedChild->MouseExit();
+-				}
++				SetControllerHover( focusedChild, false );
+ 				ClearMouseHover();
+ 				gui->SetControllerNavigation( false );
+ 				RouteMouseCoords( 0, 0 );
+@@ -1412,16 +1511,17 @@ const char *idWindow::HandleEvent(const sysEvent_t *event, bool *updateVisuals)
+ 				}
+ 			} else if (controllerFocusDirection != 0 && event->evValue2) {
+ 				idWindow *focusedChild = GetFocusedChild();
++				// A mouse click can leave focus in a slider's number box.
++				idSliderWindow *rowSlider = SliderForValueEdit( focusedChild );
++				if ( rowSlider != NULL ) {
++					SetFocus( rowSlider, false );
++					focusedChild = rowSlider;
++				}
+ 				const bool selfConsumesDirection = ( focusedChild == this ) && WindowConsumesDirectionalNavigation( this, event->evValue );
+-				const bool childConsumesDirection = WindowConsumesDirectionalNavigation( focusedChild, event->evValue );
+-				if (focusedChild && focusedChild != this) {
++				// Only a control that uses this direction sees it; the rest move focus.
++				if ( focusedChild && focusedChild != this && WindowConsumesDirectionalNavigation( focusedChild, event->evValue ) ) {
+ 					const char *childRet = focusedChild->HandleEvent(event, updateVisuals);
+-					if (childRet && *childRet) {
+-						return childRet;
+-					}
+-					if ( childConsumesDirection ) {
+-						return "";
+-					}
++					return childRet ? childRet : "";
+ 				}
+ 				if ( !selfConsumesDirection ) {
+ 					NavigateFocus( this, controllerFocusDirection, true );
+diff --git a/src/ui/Window.h b/src/ui/Window.h
+index 834d79d..0e9d5f0 100644
+--- a/src/ui/Window.h
++++ b/src/ui/Window.h
+@@ -286,6 +286,7 @@ public:
+ 	void SetupTransforms(float x, float y);
+ 	bool Contains(const idRectangle &sr, float x, float y);
+ 	const char *GetName() { return name; };
++	const idRectangle &GetDrawRect() const { return drawRect; }
+ 
+ // jmarshall - quake 4 gui
+ 	void ClearTransitions(void) { transitions.Clear(); }
+diff --git a/tools/tests/menu_controller_navigation.py b/tools/tests/menu_controller_navigation.py
+index c31c20c..e9442d2 100644
+--- a/tools/tests/menu_controller_navigation.py
++++ b/tools/tests/menu_controller_navigation.py
+@@ -28,6 +28,8 @@ HARNESS = r'''
+ #include <string>
+ #include <vector>
+ #include <cstdio>
++#include <cstdarg>
++#include <initializer_list>
+ template<class T> struct idList : std::vector<T> {
+     using std::vector<T>::operator=;
+     int Num() const { return static_cast<int>(this->size()); }
+@@ -37,41 +39,153 @@ template<class T> struct idList : std::vector<T> {
+         return i == this->end() ? -1 : static_cast<int>(i - this->begin());
+     }
+ };
+-struct Text : std::string { void Clear() { clear(); } };
++struct Text : std::string {
++    using std::string::operator=;
++    void Clear() { clear(); }
++    int Length() const { return static_cast<int>(size()); }
++};
+ enum { WIN_CANFOCUS = 1, SE_MOUSE, SE_KEY, K_MOUSE1 = 187, K_MWHEELUP = 196 };
++enum { WIN_NOCLIP = 0x10000 };
++enum { K_UPARROW = 300, K_DOWNARROW, K_LEFTARROW, K_RIGHTARROW, K_KP_UPARROW, K_KP_DOWNARROW, K_KP_LEFTARROW,
++    K_KP_RIGHTARROW, K_PGUP, K_PGDN, K_HOME, K_END, K_DEL, K_INS, K_BACKSPACE };
+ struct sysEvent_t { int evType, evValue, evValue2; };
++struct idRectangle { float x = 0, y = 0, w = 0, h = 0; };
++struct idMath { static int Ftoi(float f) { return static_cast<int>(f); } };
++static const char* va(const char* fmt, ...) {
++    static char buffer[512];
++    va_list args; va_start(args, fmt); std::vsnprintf(buffer, sizeof(buffer), fmt, args); va_end(args);
++    return buffer;
++}
++struct idWindow;
++struct drawWin_t { idWindow* win; void* simp; };
+ struct Gui {
+     bool controller = false;
+     Text pending;
++    idWindow* desktop = nullptr;
+     bool ControllerNavigation() const { return controller; }
+     void SetControllerNavigation(bool v) { controller = v; }
+     Text& GetPendingCmd() { return pending; }
++    idWindow* GetDesktop() const { return desktop; }
+ };
+ struct idWindow {
+     idList<idWindow*> children;
+-    idWindow *focusedChild = nullptr, *overChild = nullptr, *capture = nullptr;
++    idWindow *focusedChild = nullptr, *overChild = nullptr, *capture = nullptr, *parent = nullptr;
+     Gui *gui;
+-    Text cmd;
++    Text cmd, enterCmd;
++    std::string name;
++    idRectangle drawRect;
+     bool visible = true, noEvents = false, hover = false;
+     int flags = 0, enters = 0, exits = 0, routes = 0;
+     explicit idWindow(Gui& g, bool focusable = false) : gui(&g), flags(focusable ? WIN_CANFOCUS : 0) {}
++    virtual ~idWindow() {}
++    void Add(std::initializer_list<idWindow*> list) { for (idWindow* w : list) { children.Append(w); w->parent = this; } }
+     int GetChildCount() const { return children.Num(); }
+     idWindow* GetChild(int i) { return children[i]; }
++    idWindow* GetParent() { return parent; }
++    const char* GetName() { return name.c_str(); }
++    Gui* GetGui() { return gui; }
++    const idRectangle& GetDrawRect() const { return drawRect; }
+     bool IsVisible() const { return visible; }
+     bool HasNoEvents() const { return noEvents; }
+     int GetFlags() const { return flags; }
+     idWindow* GetFocusedChild() { return focusedChild; }
+     idWindow* GetCaptureChild() { return capture; }
+     idWindow* SetFocus(idWindow* w, bool) { auto old = focusedChild; focusedChild = w; return old; }
+-    void MouseEnter() { ++enters; }
++    drawWin_t* FindChildByName(const char* n) {
++        static drawWin_t found;
++        if (name == n) { found = {this, nullptr}; return &found; }
++        for (idWindow* c : children) if (drawWin_t* d = c->FindChildByName(n)) return d;
++        return nullptr;
++    }
++    void MouseEnter() { ++enters; cmd = enterCmd; }
+     void MouseExit() { ++exits; }
+     void RouteMouseCoords(float, float) { ++routes; }
+     void ClearMouseHover();
+     void UpdateOwnership(bool controllerEvent, const sysEvent_t* event);
+ };
++struct idChoiceWindow : idWindow { using idWindow::idWindow; };
++struct idListWindow : idWindow { using idWindow::idWindow; };
++struct idSliderWindow : idWindow {
++    using idWindow::idWindow;
++    bool vertical = false, scrollbar = false;
++    bool IsVertical() const { return vertical; }
++    bool IsScrollbar() const { return scrollbar; }
++};
++struct idEditWindow : idWindow {
++    using idWindow::idWindow;
++    bool wrap = false;
++    bool IsWrapped() const { return wrap; }
++};
+ '''
+ 
+ TESTS = r'''
++// A settings list: a clipping view around taller content, each row a choice or
++// a slider paired with its number box, each lit by a separate "<row>_hover".
++static void SettingsPage() {
++    Gui gui;
++    idWindow desktop(gui), view(gui), content(gui), choiceRow(gui), sliderRow(gui), lowRow(gui);
++    idWindow choiceHover(gui), sliderHover(gui), lowHover(gui);
++    idChoiceWindow choice(gui, true), lowChoice(gui, true);
++    idSliderWindow slider(gui, true), scrollbar(gui, true);
++    idEditWindow sliderValue(gui, true), nameField(gui, true);
++    gui.desktop = &desktop;
++    desktop.name = "desktop"; content.name = "set_game_content";
++    choiceRow.name = "set_game_a"; sliderRow.name = "set_game_b"; lowRow.name = "set_game_c";
++    choiceHover.name = "set_game_a_hover"; sliderHover.name = "set_game_b_hover"; lowHover.name = "set_game_c_hover";
++    sliderHover.enterCmd = "play main_menu_mouseover";
++    scrollbar.scrollbar = scrollbar.vertical = true;
++    desktop.Add({&view, &scrollbar});
++    view.Add({&content});
++    content.Add({&choiceRow, &sliderRow, &lowRow, &choiceHover, &sliderHover, &lowHover});
++    choiceRow.Add({&choice});
++    sliderRow.Add({&slider, &sliderValue});
++    lowRow.Add({&lowChoice});
++    view.drawRect = {0, 128, 640, 256};
++    content.drawRect = {-24, -41, 640, 2258};
++    choiceRow.drawRect = {228, 47, 377, 25};
++    sliderRow.drawRect = {228, 71, 377, 25};
++    lowRow.drawRect = {228, 695, 377, 25};
++
++    // The number box and the scrollbar are not stops.
++    idList<idWindow*> stops;
++    CollectFocusWindows(&desktop, stops);
++    assert(stops.Num() == 3 && stops[0] == &choice && stops[1] == &slider && stops[2] == &lowChoice);
++    assert(SliderForValueEdit(&sliderValue) == &slider && SliderForValueEdit(&nameField) == nullptr);
++
++    // Choices and horizontal sliders take left/right, never up/down.
++    assert(WindowConsumesDirectionalNavigation(&choice, K_RIGHTARROW) && !WindowConsumesDirectionalNavigation(&choice, K_DOWNARROW));
++    assert(WindowConsumesDirectionalNavigation(&slider, K_LEFTARROW) && !WindowConsumesDirectionalNavigation(&slider, K_UPARROW));
++    assert(WindowConsumesDirectionalNavigation(&scrollbar, K_DOWNARROW) && !WindowConsumesDirectionalNavigation(&scrollbar, K_LEFTARROW));
++    assert(!WindowConsumesDirectionalNavigation(&sliderValue, K_LEFTARROW) && !WindowConsumesDirectionalNavigation(&sliderValue, K_DOWNARROW));
++    assert(WindowConsumesDirectionalNavigation(&nameField, K_LEFTARROW) && !WindowConsumesDirectionalNavigation(&nameField, K_DOWNARROW));
++    nameField.wrap = true;
++    assert(WindowConsumesDirectionalNavigation(&nameField, K_DOWNARROW));
++    idListWindow list(gui, true);
++    assert(WindowConsumesDirectionalNavigation(&list, K_UPARROW) && !WindowConsumesDirectionalNavigation(&list, K_RIGHTARROW));
++
++    // Focus lights the row's hover window and passes on its sound; no scroll in view.
++    desktop.focusedChild = &choice;
++    assert(NavigateFocus(&desktop, 1, true) && desktop.focusedChild == &slider);
++    assert(choiceHover.exits == 1 && sliderHover.enters == 1 && choice.exits == 1 && slider.enters == 1);
++    assert(gui.pending == "play main_menu_mouseover ; " && sliderHover.cmd.empty());
++    gui.pending.Clear();
++
++    // A row below the view asks the menu to scroll it in, in content coordinates.
++    assert(NavigateFocus(&desktop, 1, true) && desktop.focusedChild == &lowChoice);
++    assert(sliderHover.exits == 1 && lowHover.enters == 1);
++    assert(gui.pending == "scrollIntoView set_game_content 695 25 256 ; ");
++    gui.pending.Clear();
++
++    // Wrapping back to the top row, still in view, asks for nothing.
++    assert(NavigateFocus(&desktop, 1, true) && desktop.focusedChild == &choice);
++    assert(gui.pending.empty());
++
++    // Scrolled past it, the top row asks again.
++    content.drawRect.y = -41 - 24 * 10;
++    assert(NavigateFocus(&desktop, -1, true) && NavigateFocus(&desktop, 1, true) && desktop.focusedChild == &choice);
++    assert(gui.pending.find("scrollIntoView set_game_content 47 25 256 ; ") != std::string::npos);
++}
++
+ int main() {
+     Gui gui;
+     idWindow root(gui), group(gui), a(gui,true), b(gui,true), c(gui,true), hidden(gui), h(gui,true), disabled(gui,true);
+@@ -122,15 +236,103 @@ int main() {
+     root.capture = &a;
+     root.UpdateOwnership(true, &controllerDown);
+     assert(!gui.controller); // do not interrupt an active mouse drag
++
++    SettingsPage();
+     std::puts("menu_controller_navigation: behavioral checks passed");
+ }
+ '''
+ 
++# The menu's half of auto-scroll: the real page table and scroll math.
++SCROLL_HARNESS = r'''
++#include <cassert>
++#include <cmath>
++#include <cstdarg>
++#include <cstdio>
++#include <cstdlib>
++#include <map>
++#include <string>
++#include <cctype>
++#include <cstring>
++struct idCVar { int value = 0; int GetInteger() const { return value; } };
++static idCVar gui_set_sys_scroll, gui_set_audio_scroll, gui_set_game_scroll;
++struct idStr {
++    static int Icmpn(const char* a, const char* b, int n) {
++        for (int i = 0; i < n; ++i) {
++            const int d = std::tolower(static_cast<unsigned char>(a[i])) - std::tolower(static_cast<unsigned char>(b[i]));
++            if (d || !a[i]) return d;
++        }
++        return 0;
++    }
++    static int Icmp(const char* a, const char* b) { return Icmpn(a, b, 1 << 30); }
++    static int Length(const char* s) { return static_cast<int>(std::strlen(s)); }
++};
++struct idMath {
++    static float Floor(float f) { return std::floor(f); }
++    static float Ceil(float f) { return std::ceil(f); }
++    static int Ftoi(float f) { return static_cast<int>(f); }
++    static int ClampInt(int lo, int hi, int v) { return v < lo ? lo : v > hi ? hi : v; }
++};
++static const char* va(const char* fmt, ...) {
++    static char buffer[512];
++    va_list args; va_start(args, fmt); std::vsnprintf(buffer, sizeof(buffer), fmt, args); va_end(args);
++    return buffer;
++}
++struct idUserInterface {
++    std::map<std::string, int> state;
++    int GetStateInt(const char* name, const char* fallback) const {
++        auto i = state.find(name);
++        return i == state.end() ? std::atoi(fallback) : i->second;
++    }
++};
++'''
++
++SCROLL_TESTS = r'''
++static std::string adjustedPage;
++static int adjustedDelta = 0, adjustCalls = 0;
++static bool AdjustMainMenuPageScroll(idUserInterface*, const mainMenuSettingsScrollPage_t& page, int delta, bool toStart, bool toEnd) {
++    assert(!toStart && !toEnd);
++    adjustedPage = page.name; adjustedDelta = delta; ++adjustCalls;
++    return true;
++}
++int main() {
++    idUserInterface gui;
++    // A Game Options row at y 695 is wholly in view for scroll steps 18 to 27.
++    gui.state["gui_set_game_scroll"] = 0;
++    assert(ScrollMainMenuSettingsRowIntoView(&gui, "set_game_content", 695, 25, 256));
++    assert(adjustedPage == "game" && adjustedDelta == 18);
++    gui.state["gui_set_game_scroll"] = 40;
++    assert(ScrollMainMenuSettingsRowIntoView(&gui, "set_game_content", 695, 25, 256) && adjustedDelta == -13);
++    gui.state["gui_set_game_scroll"] = 20;
++    assert(ScrollMainMenuSettingsRowIntoView(&gui, "set_game_content", 695, 25, 256) && adjustedDelta == 0);
++    // Only the whole content name matches a page.
++    const int calls = adjustCalls;
++    assert(!ScrollMainMenuSettingsRowIntoView(&gui, "set_game", 695, 25, 256));
++    assert(!ScrollMainMenuSettingsRowIntoView(&gui, "set_mp_content", 695, 25, 256));
++    assert(adjustCalls == calls);
++    std::puts("menu_controller_navigation: scroll checks passed");
++}
++'''
++
++
++def compile_and_run(build: Path, name: str, text: str) -> None:
++    cpp = build / f'{name}.cpp'
++    cpp.write_text(text, encoding='utf-8')
++    compiler = os.environ.get('CXX') or shutil.which('clang++') or shutil.which('g++') or shutil.which('cl')
++    if not compiler:
++        raise RuntimeError('Set CXX to a C++ compiler or run from a developer shell.')
++    exe = build / (f'{name}.exe' if os.name == 'nt' else name)
++    args = [compiler, '/nologo', '/EHsc', '/std:c++17', str(cpp), f'/Fe:{exe}', f'/Fo:{build}/'] if Path(compiler).stem.lower() == 'cl' else [compiler, '-std=c++17', str(cpp), '-o', str(exe)]
++    subprocess.run(args, check=True, cwd=build)
++    subprocess.run([str(exe)], check=True, cwd=build)
++
+ 
+ def main() -> None:
+     source = (ROOT / 'src/ui/Window.cpp').read_text(encoding='utf-8')
+     snippets = '\n'.join(extract(source, sig) for sig in (
+-        'static void CollectFocusWindows(', 'static bool NavigateFocus(',
++        'static idSliderWindow *SliderForValueEdit(', 'static bool WindowConsumesDirectionalNavigation(',
++        'static void CollectFocusWindows(', 'static void RunControllerHoverScript(',
++        'static idWindow *FindRowHoverWindow(', 'static void SetControllerHover(',
++        'static void RequestScrollIntoView(', 'static bool NavigateFocus(',
+         'void idWindow::ClearMouseHover()'))
+     ownership = extract(source, 'if ( controllerEvent && event->evValue2')
+     next_start = source.index(ownership) + len(ownership)
+@@ -143,15 +345,18 @@ def main() -> None:
+     assert handle.index('bindHandler->HandleEvent') < handle.index('desktop->HandleEvent')
+     build = ROOT / '.tmp/menu-controller-navigation'
+     build.mkdir(parents=True, exist_ok=True)
+-    cpp = build / 'test.cpp'
+-    cpp.write_text(HARNESS + snippets + '\nvoid idWindow::UpdateOwnership(bool controllerEvent, const sysEvent_t* event) {\n' + ownership + '\n}\n' + TESTS, encoding='utf-8')
+-    compiler = os.environ.get('CXX') or shutil.which('clang++') or shutil.which('g++') or shutil.which('cl')
+-    if not compiler:
+-        raise RuntimeError('Set CXX to a C++ compiler or run from a developer shell.')
+-    exe = build / ('test.exe' if os.name == 'nt' else 'test')
+-    args = [compiler, '/nologo', '/EHsc', '/std:c++17', str(cpp), f'/Fe:{exe}', f'/Fo:{build}/'] if Path(compiler).stem.lower() == 'cl' else [compiler, '-std=c++17', str(cpp), '-o', str(exe)]
+-    subprocess.run(args, check=True, cwd=build)
+-    subprocess.run([str(exe)], check=True, cwd=build)
++    compile_and_run(build, 'test', HARNESS + snippets + '\nvoid idWindow::UpdateOwnership(bool controllerEvent, const sysEvent_t* event) {\n' + ownership + '\n}\n' + TESTS)
++
++    menu = (ROOT / 'src/framework/Session_menu.cpp').read_text(encoding='utf-8')
++    assert 'ScrollMainMenuSettingsRowIntoView( guiActive ? guiActive : guiMainMenu' in extract(menu, 'void idSessionLocal::HandleMainMenuCommands(')
++    scroll = '\n'.join([
++        extract(menu, 'typedef struct mainMenuSettingsScrollPage_s {') + ' mainMenuSettingsScrollPage_t;',
++        extract(menu, 'static const mainMenuSettingsScrollPage_t MAINMENU_SETTINGS_SCROLL_PAGES[] = {') + ';',
++        'static bool AdjustMainMenuPageScroll(idUserInterface*, const mainMenuSettingsScrollPage_t&, int, bool, bool);',
++        extract(menu, 'static void MainMenuSettingsScrollExtent('),
++        extract(menu, 'static bool ScrollMainMenuSettingsRowIntoView( idUserInterface *gui, const char *contentName, int rowY, int rowHeight, int viewHeight ) {'),
++    ])
++    compile_and_run(build, 'scroll', SCROLL_HARNESS + scroll + SCROLL_TESTS)
+ 
+ 
+ if __name__ == '__main__':
+-- 
+2.53.0.windows.1
+

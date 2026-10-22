@@ -56,3 +56,17 @@ ModDB limits each connection to about 1.2 MB/s. Splitting the download into rang
 
 ## Measurement note
 Automated 4K runs, both openQ4's `renderer_gameplay_benchmark.py` and my visible-window launcher `tools/bench_graphics.py`, reported a flat 60.0 fps "simulation-bound" in every configuration. openQ4 caps windows it considers hidden at 60 fps on Windows, and launches from this tool shell appear to trigger that. The numbers aren't the game's real performance and weren't used. Check in game with `com_showFPS 1` instead.
+
+## GPU usage and the performance trace
+Reported (2026-10-21): GPU usage near 40%, sometimes spiking. On the test PC (RTX 4090, 4K, 240 Hz) that's headroom, not a problem: at a 240 fps cap the GPU renders 240 frames a second and idles between them. The usage figure follows how heavy each frame is (open areas, many shadowed lights, effects) and how many frames are drawn. Levers, if needed: a lower `com_maxfps` (144 or 120 cuts GPU work roughly in proportion), `r_multiSamples 2`, `r_shadowMapSize 1024`.
+
+To find where spikes come from, play with the trace on:
+```powershell
+pwsh tools/launch_definitive.ps1 -PerfTrace
+python -I tools/perf_report.py        # after quitting: per level, per menu, loads, stalls
+```
+- **In game, `com_perfTrace 1`** (patch 0008) writes `<profile>/baseoq4/perftrace/trace_*.csv`. Each second gets a row with the level, the screen (game or a menu), fps, frame time, game logic time, renderer front/back end time, the renderer's whole-frame GPU time and the scene size. Frames of 50 ms or more (`com_perfTraceHitchMsec`) get their own row, and so does each level load. The whole-frame GPU time spans the buffer swap, so it includes waiting for the display and isn't GPU load.
+- **Outside the game, `tools/perf_sampler.ps1`** (started by `-PerfTrace`) records Windows' own GPU counters every second into `gpu_*.csv`: the game's 3D utilization (Task Manager's number), the whole adapter's 3D utilization and the game's dedicated VRAM.
+- **`tools/perf_report.py`** joins the two by time: GPU % and VRAM per level and per menu, the highest samples, the longest frames and the level loads.
+
+First test (hidden 720p window, `game/airdefense1`, both hi-res packs): GPU 30–57% **while the level loaded** (texture uploads), then about 3% in play; VRAM about 1 GB. So asset loading alone can produce a GPU spike.

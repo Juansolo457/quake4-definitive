@@ -1,0 +1,2451 @@
+From 375c597c7139ebcc18a04dff23379891cf913b99 Mon Sep 17 00:00:00 2001
+From: juansolo457 <5344231+Juansolo457@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 18:28:34 -0700
+Subject: [PATCH 7/8] Settings: help line under the Game Options list
+
+A panel below the list says what the highlighted option does. Each row's hover
+window sets it on enter (mouse or controller focus) and restores the default
+hint on exit. 85 strings (#str_231309-231393), English in every openQ4 table.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../baseoq4/pak0/guis/menu/settings/game.gui  |  19 ++
+ .../pak0/guis/menu/settings/game_hovers.gui   | 168 ++++++++++++++++++
+ .../pak0/strings/brazilian_openq4.lang        |  85 +++++++++
+ .../baseoq4/pak0/strings/czech_openq4.lang    |  85 +++++++++
+ .../baseoq4/pak0/strings/english_openq4.lang  |  85 +++++++++
+ .../baseoq4/pak0/strings/french_openq4.lang   |  85 +++++++++
+ .../baseoq4/pak0/strings/german_openq4.lang   |  85 +++++++++
+ .../pak0/strings/hungarian_openq4.lang        |  85 +++++++++
+ .../baseoq4/pak0/strings/italian_openq4.lang  |  85 +++++++++
+ .../baseoq4/pak0/strings/polish_openq4.lang   |  85 +++++++++
+ .../baseoq4/pak0/strings/russian_openq4.lang  |  85 +++++++++
+ .../baseoq4/pak0/strings/spanish_openq4.lang  |  85 +++++++++
+ .../baseoq4/pak0/strings/turkish_openq4.lang  |  85 +++++++++
+ .../pak0/strings/ukrainian_openq4.lang        |  85 +++++++++
+ 14 files changed, 1207 insertions(+)
+
+diff --git a/content/baseoq4/pak0/guis/menu/settings/game.gui b/content/baseoq4/pak0/guis/menu/settings/game.gui
+index 2ac7e7a..8f0998b 100644
+--- a/content/baseoq4/pak0/guis/menu/settings/game.gui
++++ b/content/baseoq4/pak0/guis/menu/settings/game.gui
+@@ -4728,6 +4728,25 @@
+ 				#include "guis/menu/settings/game_hovers.gui"
+ 					}
+ 				}
++				windowDef set_game_help
++				{
++					rect	204,386,377,54
++					visible	1
++					noevents	1
++					background	"gfx/guis/mainmenu/b3_light"
++					matcolor	0.545,0.588,0.294,0.25
++
++					windowDef set_game_help_text
++					{
++						rect	31,4,336,48
++						visible	1
++						noevents	1
++						forecolor	1,1,1,0.8
++						text	"#str_231309"
++						textscale	0.22
++						font	"fonts/lowpixel"
++					}
++				}
+ 				sliderDef set_game_scroll_thumb
+ 				{
+ 					rect	613,128,16,256
+diff --git a/content/baseoq4/pak0/guis/menu/settings/game_hovers.gui b/content/baseoq4/pak0/guis/menu/settings/game_hovers.gui
+index dfb70b6..d0b4fa0 100644
+--- a/content/baseoq4/pak0/guis/menu/settings/game_hovers.gui
++++ b/content/baseoq4/pak0/guis/menu/settings/game_hovers.gui
+@@ -13,12 +13,14 @@
+ 					set "set_game_freelook_background::matcolor_w" "1" ;
+ 					
+ 					set "cmd" "play main_menu_mouseover" ;	
++					set "set_game_help_text::text" "#str_231310" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_freelook_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 
+@@ -40,12 +42,14 @@
+ 					set "set_game_autoreload_background::matcolor_w" "1" ;
+ 					
+ 					set "cmd" "play main_menu_mouseover" ;	
++					set "set_game_help_text::text" "#str_231311" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_autoreload_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 
+@@ -67,12 +71,14 @@
+ 					set "set_game_autoswitch_background::matcolor_w" "1" ;
+ 					
+ 					set "cmd" "play main_menu_mouseover" ;	
++					set "set_game_help_text::text" "#str_231312" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_autoswitch_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 
+@@ -92,12 +98,14 @@
+ 					stoptransitions "set_game_togglezoom_background" ;
+ 					set "set_game_togglezoom_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231313" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_togglezoom_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -116,12 +124,14 @@
+ 					stoptransitions "set_game_scopesensitivity_background" ;
+ 					set "set_game_scopesensitivity_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231314" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_scopesensitivity_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -135,12 +145,14 @@
+ 					stoptransitions "set_game_fov_background" ;
+ 					set "set_game_fov_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231315" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_fov_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -161,12 +173,14 @@
+ 					set "set_game_showdecals_background::matcolor_w" "1" ;
+ 					
+ 					set "cmd" "play main_menu_mouseover" ;	
++					set "set_game_help_text::text" "#str_231316" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_showdecals_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 
+@@ -188,12 +202,14 @@
+ 					set "set_game_showgun_background::matcolor_w" "1" ;
+ 					
+ 					set "cmd" "play main_menu_mouseover" ;	
++					set "set_game_help_text::text" "#str_231317" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_showgun_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 
+@@ -213,11 +229,13 @@
+ 					stoptransitions "set_game_gunXYZ_background" ;
+ 					set "set_game_gunXYZ_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231318" ;
+ 				}
+ 			}
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_gunXYZ_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -236,12 +254,14 @@
+ 					stoptransitions "set_game_simpleitems_background" ;
+ 					set "set_game_simpleitems_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;	
++					set "set_game_help_text::text" "#str_231319" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_simpleitems_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -260,12 +280,14 @@
+ 					stoptransitions "set_game_opponentweaponstyle_background" ;
+ 					set "set_game_opponentweaponstyle_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231320" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_opponentweaponstyle_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -284,12 +306,14 @@
+ 					stoptransitions "set_game_forcemodel_background" ;
+ 					set "set_game_forcemodel_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;	
++					set "set_game_help_text::text" "#str_231321" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_forcemodel_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -308,12 +332,14 @@
+ 					stoptransitions "set_game_mpitch_background" ;
+ 					set "set_game_mpitch_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;	
++					set "set_game_help_text::text" "#str_231322" ;
+ 				}
+ 			}
+ 	
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 						transition "set_game_mpitch_background::matcolor_w" "1" "0.4" "300" ;
++						set "set_game_help_text::text" "#str_231309" ;
+ 					}
+ 				}
+ 		}	
+@@ -332,12 +358,14 @@
+ 					stoptransitions "set_game_msmooth_background" ;
+ 					set "set_game_msmooth_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;	
++					set "set_game_help_text::text" "#str_231323" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_msmooth_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 
+@@ -359,12 +387,14 @@
+ 					set "set_game_msensitivity_background::matcolor_w" "1" ;
+ 					
+ 					set "cmd" "play main_menu_mouseover" ;	
++					set "set_game_help_text::text" "#str_231324" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_msensitivity_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 
+@@ -384,12 +414,14 @@
+ 					stoptransitions "set_game_mcpi_background" ;
+ 					set "set_game_mcpi_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231325" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_mcpi_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -408,12 +440,14 @@
+ 					stoptransitions "set_game_mfilter_background" ;
+ 					set "set_game_mfilter_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231326" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_mfilter_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -432,12 +466,14 @@
+ 					stoptransitions "set_game_maccel_background" ;
+ 					set "set_game_maccel_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231327" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_maccel_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -456,12 +492,14 @@
+ 					stoptransitions "set_game_macceloffset_background" ;
+ 					set "set_game_macceloffset_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231328" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_macceloffset_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -480,12 +518,14 @@
+ 					stoptransitions "set_game_maccelpower_background" ;
+ 					set "set_game_maccelpower_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231329" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_maccelpower_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -504,12 +544,14 @@
+ 					stoptransitions "set_game_msenscap_background" ;
+ 					set "set_game_msenscap_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231330" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_msenscap_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -528,12 +570,14 @@
+ 					stoptransitions "set_game_controller_enabled_background" ;
+ 					set "set_game_controller_enabled_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231331" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_enabled_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -547,12 +591,14 @@
+ 					stoptransitions "set_game_controller_xenon_background" ;
+ 					set "set_game_controller_xenon_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231332" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_xenon_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -566,12 +612,14 @@
+ 					stoptransitions "set_game_controller_aimassist_background" ;
+ 					set "set_game_controller_aimassist_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231333" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_aimassist_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -585,12 +633,14 @@
+ 					stoptransitions "set_game_controller_aimassist_friction_background" ;
+ 					set "set_game_controller_aimassist_friction_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231334" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_aimassist_friction_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -604,12 +654,14 @@
+ 					stoptransitions "set_game_controller_xenon_yaw_background" ;
+ 					set "set_game_controller_xenon_yaw_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231335" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_xenon_yaw_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -623,12 +675,14 @@
+ 					stoptransitions "set_game_controller_xenon_pitch_background" ;
+ 					set "set_game_controller_xenon_pitch_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231336" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_xenon_pitch_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -642,12 +696,14 @@
+ 					stoptransitions "set_game_controller_xenon_zoom_background" ;
+ 					set "set_game_controller_xenon_zoom_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231337" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_xenon_zoom_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -661,12 +717,14 @@
+ 					stoptransitions "set_game_controller_layout_background" ;
+ 					set "set_game_controller_layout_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231338" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_layout_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -680,12 +738,14 @@
+ 					stoptransitions "set_game_controller_prompts_background" ;
+ 					set "set_game_controller_prompts_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231339" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_prompts_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -699,12 +759,14 @@
+ 					stoptransitions "set_game_controller_deadzone_background" ;
+ 					set "set_game_controller_deadzone_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231340" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_deadzone_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -718,12 +780,14 @@
+ 					stoptransitions "set_game_controller_look_sensitivity_background" ;
+ 					set "set_game_controller_look_sensitivity_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231341" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_look_sensitivity_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -737,12 +801,14 @@
+ 					stoptransitions "set_game_controller_wheel_sensitivity_background" ;
+ 					set "set_game_controller_wheel_sensitivity_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231342" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_wheel_sensitivity_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -756,12 +822,14 @@
+ 					stoptransitions "set_game_wheel_offset_background" ;
+ 					set "set_game_wheel_offset_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231343" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_wheel_offset_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -775,12 +843,14 @@
+ 					stoptransitions "set_game_controller_look_curve_background" ;
+ 					set "set_game_controller_look_curve_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231344" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_look_curve_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -794,12 +864,14 @@
+ 					stoptransitions "set_game_controller_invert_background" ;
+ 					set "set_game_controller_invert_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231345" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_invert_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -813,12 +885,14 @@
+ 					stoptransitions "set_game_controller_trigger_background" ;
+ 					set "set_game_controller_trigger_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231346" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_trigger_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -832,12 +906,14 @@
+ 					stoptransitions "set_game_controller_rumble_background" ;
+ 					set "set_game_controller_rumble_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231347" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_rumble_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -851,12 +927,14 @@
+ 					stoptransitions "set_game_controller_rumble_strength_background" ;
+ 					set "set_game_controller_rumble_strength_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231348" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_rumble_strength_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -870,12 +948,14 @@
+ 					stoptransitions "set_game_controller_gyro_background" ;
+ 					set "set_game_controller_gyro_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231349" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_gyro_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -889,12 +969,14 @@
+ 					stoptransitions "set_game_controller_gyro_sensitivity_background" ;
+ 					set "set_game_controller_gyro_sensitivity_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231350" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_gyro_sensitivity_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -908,12 +990,14 @@
+ 					stoptransitions "set_game_controller_touchpad_mode_background" ;
+ 					set "set_game_controller_touchpad_mode_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231351" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_touchpad_mode_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -927,12 +1011,14 @@
+ 					stoptransitions "set_game_controller_touchpad_sensitivity_background" ;
+ 					set "set_game_controller_touchpad_sensitivity_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231352" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_touchpad_sensitivity_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -946,12 +1032,14 @@
+ 					stoptransitions "set_game_controller_touchscreen_background" ;
+ 					set "set_game_controller_touchscreen_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231353" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_touchscreen_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -965,12 +1053,14 @@
+ 					stoptransitions "set_game_controller_low_battery_rumble_background" ;
+ 					set "set_game_controller_low_battery_rumble_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231354" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_low_battery_rumble_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -984,12 +1074,14 @@
+ 					stoptransitions "set_game_controller_low_battery_rumble_cap_background" ;
+ 					set "set_game_controller_low_battery_rumble_cap_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231355" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_controller_low_battery_rumble_cap_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1010,12 +1102,14 @@
+ 					set "set_game_customxhair_background::matcolor_w" "1" ;
+ 					
+ 					set "cmd" "play main_menu_mouseover" ;	
++					set "set_game_help_text::text" "#str_231356" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_customxhair_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1036,12 +1130,14 @@
+ 					set "set_game_previewxhair_background::matcolor_w" "1" ;
+ 					
+ 					set "cmd" "play main_menu_mouseover" ;	
++					set "set_game_help_text::text" "#str_231357" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_previewxhair_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 
+@@ -1073,12 +1169,14 @@
+ 					set "set_game_xhairsize_background::matcolor_w" "1" ;
+ 					
+ 					set "cmd" "play main_menu_mouseover" ;	
++					set "set_game_help_text::text" "#str_231358" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_xhairsize_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 
+@@ -1100,12 +1198,14 @@
+ 					set "set_game_xhaircolor_background::matcolor_w" "1" ;
+ 					
+ 					set "cmd" "play main_menu_mouseover" ;	
++					set "set_game_help_text::text" "#str_231359" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_xhaircolor_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1126,12 +1226,14 @@
+ 					set "set_game_hitmarker_background::matcolor_w" "1" ;
+ 
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231360" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_hitmarker_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1152,12 +1254,14 @@
+ 					set "set_game_hudlayout_background::matcolor_w" "1" ;
+ 
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231361" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_hudlayout_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1178,12 +1282,14 @@
+ 					set "set_game_hudscale_background::matcolor_w" "1" ;
+ 
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231362" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_hudscale_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1204,12 +1310,14 @@
+ 					set "set_game_hudwidth_background::matcolor_w" "1" ;
+ 
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231363" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_hudwidth_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1230,12 +1338,14 @@
+ 					set "set_game_hudinset_background::matcolor_w" "1" ;
+ 
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231364" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_hudinset_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1256,12 +1366,14 @@
+ 					set "set_game_objectivestoggle_background::matcolor_w" "1" ;
+ 
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231365" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_objectivestoggle_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1282,12 +1394,14 @@
+ 					set "set_game_hudopacity_background::matcolor_w" "1" ;
+ 
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231366" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_hudopacity_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1308,12 +1422,14 @@
+ 					set "set_game_huddamagedir_background::matcolor_w" "1" ;
+ 
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231367" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_huddamagedir_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1334,12 +1450,14 @@
+ 					set "set_game_hudpickups_background::matcolor_w" "1" ;
+ 
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231368" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_hudpickups_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1360,12 +1478,14 @@
+ 					set "set_game_hudstrip_background::matcolor_w" "1" ;
+ 
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231369" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_hudstrip_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1386,12 +1506,14 @@
+ 					set "set_game_hudflash_background::matcolor_w" "1" ;
+ 
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231370" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_hudflash_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1410,12 +1532,14 @@
+ 					stoptransitions "set_game_corpsesink_background" ;
+ 					set "set_game_corpsesink_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231371" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_corpsesink_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1429,12 +1553,14 @@
+ 					stoptransitions "set_game_corpsetime_background" ;
+ 					set "set_game_corpsetime_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231372" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_corpsetime_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1448,12 +1574,14 @@
+ 					stoptransitions "set_game_language_background" ;
+ 					set "set_game_language_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231373" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_language_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1467,12 +1595,14 @@
+ 					stoptransitions "set_game_consoleaccess_background" ;
+ 					set "set_game_consoleaccess_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231374" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_consoleaccess_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1486,12 +1616,14 @@
+ 					stoptransitions "set_game_autoskipcinematics_background" ;
+ 					set "set_game_autoskipcinematics_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231375" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_autoskipcinematics_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1505,12 +1637,14 @@
+ 					stoptransitions "set_game_cl_gunfov_background" ;
+ 					set "set_game_cl_gunfov_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231376" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_cl_gunfov_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1524,12 +1658,14 @@
+ 					stoptransitions "set_game_cl_gunfov_adjust_background" ;
+ 					set "set_game_cl_gunfov_adjust_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231377" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_cl_gunfov_adjust_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1543,12 +1679,14 @@
+ 					stoptransitions "set_game_cl_gun_x_background" ;
+ 					set "set_game_cl_gun_x_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231378" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_cl_gun_x_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1562,12 +1700,14 @@
+ 					stoptransitions "set_game_cl_gun_y_background" ;
+ 					set "set_game_cl_gun_y_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231379" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_cl_gun_y_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1581,12 +1721,14 @@
+ 					stoptransitions "set_game_cl_gun_z_background" ;
+ 					set "set_game_cl_gun_z_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231380" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_cl_gun_z_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1600,12 +1742,14 @@ windowDef set_game_weaponkick_hover
+ 					stoptransitions "set_game_weaponkick_background" ;
+ 					set "set_game_weaponkick_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231381" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_weaponkick_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1619,12 +1763,14 @@ windowDef set_game_weaponkick_hover
+ 					stoptransitions "set_game_vr_enable_background" ;
+ 					set "set_game_vr_enable_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231382" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_vr_enable_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1638,12 +1784,14 @@ windowDef set_game_weaponkick_hover
+ 					stoptransitions "set_game_vr_aimmode_background" ;
+ 					set "set_game_vr_aimmode_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231383" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_vr_aimmode_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1657,12 +1805,14 @@ windowDef set_game_weaponkick_hover
+ 					stoptransitions "set_game_vr_lefthanded_background" ;
+ 					set "set_game_vr_lefthanded_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231384" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_vr_lefthanded_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1676,12 +1826,14 @@ windowDef set_game_weaponkick_hover
+ 					stoptransitions "set_game_vr_turnmode_background" ;
+ 					set "set_game_vr_turnmode_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231385" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_vr_turnmode_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1695,12 +1847,14 @@ windowDef set_game_weaponkick_hover
+ 					stoptransitions "set_game_vr_snapturnangle_background" ;
+ 					set "set_game_vr_snapturnangle_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231386" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_vr_snapturnangle_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1714,12 +1868,14 @@ windowDef set_game_weaponkick_hover
+ 					stoptransitions "set_game_vr_movedirection_background" ;
+ 					set "set_game_vr_movedirection_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231387" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_vr_movedirection_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1733,12 +1889,14 @@ windowDef set_game_weaponkick_hover
+ 					stoptransitions "set_game_vr_roomscale_background" ;
+ 					set "set_game_vr_roomscale_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231388" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_vr_roomscale_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1752,12 +1910,14 @@ windowDef set_game_weaponkick_hover
+ 					stoptransitions "set_game_vr_aimlaser_background" ;
+ 					set "set_game_vr_aimlaser_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231389" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_vr_aimlaser_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1771,12 +1931,14 @@ windowDef set_game_weaponkick_hover
+ 					stoptransitions "set_game_vr_hapticstrength_background" ;
+ 					set "set_game_vr_hapticstrength_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231390" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_vr_hapticstrength_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1790,12 +1952,14 @@ windowDef set_game_weaponkick_hover
+ 					stoptransitions "set_game_vr_twohanded_background" ;
+ 					set "set_game_vr_twohanded_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231391" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_vr_twohanded_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1809,12 +1973,14 @@ windowDef set_game_weaponkick_hover
+ 					stoptransitions "set_game_vr_vignette_background" ;
+ 					set "set_game_vr_vignette_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231392" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_vr_vignette_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+@@ -1828,12 +1994,14 @@ windowDef set_game_weaponkick_hover
+ 					stoptransitions "set_game_vr_physicalcrouch_background" ;
+ 					set "set_game_vr_physicalcrouch_background::matcolor_w" "1" ;
+ 					set "cmd" "play main_menu_mouseover" ;
++					set "set_game_help_text::text" "#str_231393" ;
+ 				}
+ 			}
+ 
+ 			onMouseExit {
+ 				if ("desktop::active" == 0) {
+ 					transition "set_game_vr_physicalcrouch_background::matcolor_w" "1" "0.4" "300" ;
++					set "set_game_help_text::text" "#str_231309" ;
+ 				}
+ 			}
+ 		}
+diff --git a/content/baseoq4/pak0/strings/brazilian_openq4.lang b/content/baseoq4/pak0/strings/brazilian_openq4.lang
+index 41f9745..c85da49 100644
+--- a/content/baseoq4/pak0/strings/brazilian_openq4.lang
++++ b/content/baseoq4/pak0/strings/brazilian_openq4.lang
+@@ -1379,4 +1379,89 @@
+ 	"#str_231306"	"Field of View"
+ 	"#str_231307"	"Button Prompts"
+ 	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
++	"#str_231309"	"Highlight an option to see what it does."
++	"#str_231310"	"Yes: the mouse looks up and down. No: moving the mouse forward and back walks instead, unless you hold Mouse Look."
++	"#str_231311"	"Reload automatically when the magazine runs empty."
++	"#str_231312"	"Switch to a new weapon automatically when you pick it up."
++	"#str_231313"	"Yes: press zoom once to zoom in and again to zoom out. No: hold zoom to stay zoomed in."
++	"#str_231314"	"Look speed while zoomed or scoped, as a percent of normal. With 360 Controller Feel the stick uses 360 Zoomed Speed instead."
++	"#str_231315"	"How much of the world you see, measured at 4:3; wide screens add more at the sides. Higher sees more, lower looks closer."
++	"#str_231316"	"Show bullet holes, scorch marks and blood on walls and floors."
++	"#str_231317"	"Show your weapon on screen. No hides it for a clearer view."
++	"#str_231318"	"Where your weapon sits on screen: to the right, centered, or lower right."
++	"#str_231319"	"Multiplayer: how pickups look. The original models, simple icons, or flat colored icons with or without a light sweep."
++	"#str_231320"	"Multiplayer: draw the weapons other players hold in flat icon colors, so you can tell what they carry at a glance."
++	"#str_231321"	"Multiplayer: show every player with the bright pro skins, so opponents are easier to spot."
++	"#str_231322"	"Flip vertical mouse look: moving the mouse forward looks down."
++	"#str_231323"	"Blend this many mouse readings together. Higher is smoother but adds a little delay; 1 is off."
++	"#str_231324"	"How fast the view turns when you move the mouse."
++	"#str_231325"	"Your mouse's counts per inch (CPI/DPI), so sensitivity follows real hand movement. 0 keeps the classic sensitivity."
++	"#str_231326"	"Smooth the view by averaging this many recent view angles after the mouse moves. 0 is off."
++	"#str_231327"	"Mouse acceleration, Quake Live style: faster swipes turn farther. Negative values slow fast swipes instead. 0 is off."
++	"#str_231328"	"How fast the mouse must move before acceleration starts."
++	"#str_231329"	"Shape of the acceleration curve. 2 matches Quake Live; higher ramps up more sharply."
++	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
++	"#str_231331"	"Use a gamepad. No ignores all controllers."
++	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
++	"#str_231333"	"The Xbox 360 aim assist: stick turning slows while your crosshair is over an enemy, so it is easier to stay on target."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
++	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
++	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
++	"#str_231338"	"Southpaw swaps the sticks: move with the right stick and look with the left."
++	"#str_231339"	"Which button icons to show. Automatic matches the controller you are using."
++	"#str_231340"	"How far a stick must move before it counts. Raise it if the view drifts on its own."
++	"#str_231341"	"How fast the view turns with the look stick."
++	"#str_231342"	"How fast the stick moves the weapon wheel's selection."
++	"#str_231343"	"Moves the weapon wheel left or right. 0 centers it; 27 is the original position."
++	"#str_231344"	"Shapes the look stick's response. Higher makes small movements slower for fine aim, with full speed at the edge."
++	"#str_231345"	"Flip vertical stick look: pushing up looks down."
++	"#str_231346"	"How far a trigger must be pulled before it counts as pressed."
++	"#str_231347"	"Controller vibration when you fire, take damage and more."
++	"#str_231348"	"Vibration strength. 1 is normal; up to 2 is stronger."
++	"#str_231349"	"Aim by tilting a controller that has motion sensors, such as PlayStation and Switch Pro controllers."
++	"#str_231350"	"How far the view turns when you tilt the controller."
++	"#str_231351"	"What the controller's touchpad does: nothing, move the menu cursor, look around, or work only as a button."
++	"#str_231352"	"How fast touchpad movement moves the cursor or the view."
++	"#str_231353"	"Use a touchscreen like a mouse in menus and loading screens."
++	"#str_231354"	"Below this battery percent, vibration is turned down to save power. 0 turns this off."
++	"#str_231355"	"The strongest vibration allowed while the battery is below the Low Battery Rumble level."
++	"#str_231356"	"Weapon Default gives each weapon its own crosshair. Custom uses the crosshair you pick below for every weapon."
++	"#str_231357"	"Pick the custom crosshair."
++	"#str_231358"	"Size of the custom crosshair."
++	"#str_231359"	"Color of the custom crosshair."
++	"#str_231360"	"Flash a marker on the crosshair when your shots hit."
++	"#str_231361"	"HUD style: Classic (the original), Remastered (kept inside the safe area), Minimal (the essentials), or Competitive (multiplayer)."
++	"#str_231362"	"Size of the HUD, separate from the menus."
++	"#str_231363"	"How far the HUD spreads on wide screens: within 16:9, within 21:9, or the full width."
++	"#str_231364"	"Moves the HUD in from the screen edges, in percent of the screen, for TVs that crop the picture."
++	"#str_231365"	"Yes: the objectives button opens and closes your objectives. No: they show only while you hold it."
++	"#str_231366"	"How solid the Remastered HUD is. Lower lets more of the game show through."
++	"#str_231367"	"Show which direction damage is coming from."
++	"#str_231368"	"Show a message when you pick something up."
++	"#str_231369"	"Briefly show your weapon list when you switch weapons."
++	"#str_231370"	"Tone down flashes: limits hit indicators, dims full-screen white flashes and removes the death afterimage."
++	"#str_231371"	"Bodies sink into the floor before they disappear. Ragdoll keeps ragdoll physics while they sink; No Ragdoll turns it off."
++	"#str_231372"	"How long bodies stay before they disappear. Stock keeps the game's own timing."
++	"#str_231373"	"The language for text and speech."
++	"#str_231374"	"The keys that open the console: Tilde alone, or Ctrl+Alt+Tilde so it can't open by accident."
++	"#str_231375"	"Skip cutscenes automatically as soon as they start."
++	"#str_231376"	"Field of view for your weapon only. 0 follows the main Field of View."
++	"#str_231377"	"With a Weapon FOV set: Classic keeps the weapon looking the same on any screen shape; Direct uses the value as is."
++	"#str_231378"	"Moves your weapon left or right on screen."
++	"#str_231379"	"Moves your weapon forward or back."
++	"#str_231380"	"Moves your weapon up or down."
++	"#str_231381"	"Your weapon kicks back on screen when it fires. No holds it still."
++	"#str_231382"	"Play in virtual reality with a connected headset."
++	"#str_231383"	"Aim where your weapon-hand controller points, or where you look."
++	"#str_231384"	"Which hand holds the weapon. Left also moves you with the right stick."
++	"#str_231385"	"Turn in fixed steps (Snap) or smoothly with the stick."
++	"#str_231386"	"How many degrees each snap turn rotates you."
++	"#str_231387"	"Which way the stick walks you: where your head faces, or where your off-hand controller points."
++	"#str_231388"	"Your character follows you as you walk around your room. Disabled keeps it in place."
++	"#str_231389"	"Show where your shots land while aiming with the controller: a dot, or a dot and a laser beam."
++	"#str_231390"	"Controller vibration strength in VR."
++	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
++	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
++	"#str_231393"	"Crouch in your room to crouch in the game."
+ }
+diff --git a/content/baseoq4/pak0/strings/czech_openq4.lang b/content/baseoq4/pak0/strings/czech_openq4.lang
+index ffb1a6f..4ecd3ad 100644
+--- a/content/baseoq4/pak0/strings/czech_openq4.lang
++++ b/content/baseoq4/pak0/strings/czech_openq4.lang
+@@ -1379,4 +1379,89 @@
+ 	"#str_231306"	"Field of View"
+ 	"#str_231307"	"Button Prompts"
+ 	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
++	"#str_231309"	"Highlight an option to see what it does."
++	"#str_231310"	"Yes: the mouse looks up and down. No: moving the mouse forward and back walks instead, unless you hold Mouse Look."
++	"#str_231311"	"Reload automatically when the magazine runs empty."
++	"#str_231312"	"Switch to a new weapon automatically when you pick it up."
++	"#str_231313"	"Yes: press zoom once to zoom in and again to zoom out. No: hold zoom to stay zoomed in."
++	"#str_231314"	"Look speed while zoomed or scoped, as a percent of normal. With 360 Controller Feel the stick uses 360 Zoomed Speed instead."
++	"#str_231315"	"How much of the world you see, measured at 4:3; wide screens add more at the sides. Higher sees more, lower looks closer."
++	"#str_231316"	"Show bullet holes, scorch marks and blood on walls and floors."
++	"#str_231317"	"Show your weapon on screen. No hides it for a clearer view."
++	"#str_231318"	"Where your weapon sits on screen: to the right, centered, or lower right."
++	"#str_231319"	"Multiplayer: how pickups look. The original models, simple icons, or flat colored icons with or without a light sweep."
++	"#str_231320"	"Multiplayer: draw the weapons other players hold in flat icon colors, so you can tell what they carry at a glance."
++	"#str_231321"	"Multiplayer: show every player with the bright pro skins, so opponents are easier to spot."
++	"#str_231322"	"Flip vertical mouse look: moving the mouse forward looks down."
++	"#str_231323"	"Blend this many mouse readings together. Higher is smoother but adds a little delay; 1 is off."
++	"#str_231324"	"How fast the view turns when you move the mouse."
++	"#str_231325"	"Your mouse's counts per inch (CPI/DPI), so sensitivity follows real hand movement. 0 keeps the classic sensitivity."
++	"#str_231326"	"Smooth the view by averaging this many recent view angles after the mouse moves. 0 is off."
++	"#str_231327"	"Mouse acceleration, Quake Live style: faster swipes turn farther. Negative values slow fast swipes instead. 0 is off."
++	"#str_231328"	"How fast the mouse must move before acceleration starts."
++	"#str_231329"	"Shape of the acceleration curve. 2 matches Quake Live; higher ramps up more sharply."
++	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
++	"#str_231331"	"Use a gamepad. No ignores all controllers."
++	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
++	"#str_231333"	"The Xbox 360 aim assist: stick turning slows while your crosshair is over an enemy, so it is easier to stay on target."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
++	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
++	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
++	"#str_231338"	"Southpaw swaps the sticks: move with the right stick and look with the left."
++	"#str_231339"	"Which button icons to show. Automatic matches the controller you are using."
++	"#str_231340"	"How far a stick must move before it counts. Raise it if the view drifts on its own."
++	"#str_231341"	"How fast the view turns with the look stick."
++	"#str_231342"	"How fast the stick moves the weapon wheel's selection."
++	"#str_231343"	"Moves the weapon wheel left or right. 0 centers it; 27 is the original position."
++	"#str_231344"	"Shapes the look stick's response. Higher makes small movements slower for fine aim, with full speed at the edge."
++	"#str_231345"	"Flip vertical stick look: pushing up looks down."
++	"#str_231346"	"How far a trigger must be pulled before it counts as pressed."
++	"#str_231347"	"Controller vibration when you fire, take damage and more."
++	"#str_231348"	"Vibration strength. 1 is normal; up to 2 is stronger."
++	"#str_231349"	"Aim by tilting a controller that has motion sensors, such as PlayStation and Switch Pro controllers."
++	"#str_231350"	"How far the view turns when you tilt the controller."
++	"#str_231351"	"What the controller's touchpad does: nothing, move the menu cursor, look around, or work only as a button."
++	"#str_231352"	"How fast touchpad movement moves the cursor or the view."
++	"#str_231353"	"Use a touchscreen like a mouse in menus and loading screens."
++	"#str_231354"	"Below this battery percent, vibration is turned down to save power. 0 turns this off."
++	"#str_231355"	"The strongest vibration allowed while the battery is below the Low Battery Rumble level."
++	"#str_231356"	"Weapon Default gives each weapon its own crosshair. Custom uses the crosshair you pick below for every weapon."
++	"#str_231357"	"Pick the custom crosshair."
++	"#str_231358"	"Size of the custom crosshair."
++	"#str_231359"	"Color of the custom crosshair."
++	"#str_231360"	"Flash a marker on the crosshair when your shots hit."
++	"#str_231361"	"HUD style: Classic (the original), Remastered (kept inside the safe area), Minimal (the essentials), or Competitive (multiplayer)."
++	"#str_231362"	"Size of the HUD, separate from the menus."
++	"#str_231363"	"How far the HUD spreads on wide screens: within 16:9, within 21:9, or the full width."
++	"#str_231364"	"Moves the HUD in from the screen edges, in percent of the screen, for TVs that crop the picture."
++	"#str_231365"	"Yes: the objectives button opens and closes your objectives. No: they show only while you hold it."
++	"#str_231366"	"How solid the Remastered HUD is. Lower lets more of the game show through."
++	"#str_231367"	"Show which direction damage is coming from."
++	"#str_231368"	"Show a message when you pick something up."
++	"#str_231369"	"Briefly show your weapon list when you switch weapons."
++	"#str_231370"	"Tone down flashes: limits hit indicators, dims full-screen white flashes and removes the death afterimage."
++	"#str_231371"	"Bodies sink into the floor before they disappear. Ragdoll keeps ragdoll physics while they sink; No Ragdoll turns it off."
++	"#str_231372"	"How long bodies stay before they disappear. Stock keeps the game's own timing."
++	"#str_231373"	"The language for text and speech."
++	"#str_231374"	"The keys that open the console: Tilde alone, or Ctrl+Alt+Tilde so it can't open by accident."
++	"#str_231375"	"Skip cutscenes automatically as soon as they start."
++	"#str_231376"	"Field of view for your weapon only. 0 follows the main Field of View."
++	"#str_231377"	"With a Weapon FOV set: Classic keeps the weapon looking the same on any screen shape; Direct uses the value as is."
++	"#str_231378"	"Moves your weapon left or right on screen."
++	"#str_231379"	"Moves your weapon forward or back."
++	"#str_231380"	"Moves your weapon up or down."
++	"#str_231381"	"Your weapon kicks back on screen when it fires. No holds it still."
++	"#str_231382"	"Play in virtual reality with a connected headset."
++	"#str_231383"	"Aim where your weapon-hand controller points, or where you look."
++	"#str_231384"	"Which hand holds the weapon. Left also moves you with the right stick."
++	"#str_231385"	"Turn in fixed steps (Snap) or smoothly with the stick."
++	"#str_231386"	"How many degrees each snap turn rotates you."
++	"#str_231387"	"Which way the stick walks you: where your head faces, or where your off-hand controller points."
++	"#str_231388"	"Your character follows you as you walk around your room. Disabled keeps it in place."
++	"#str_231389"	"Show where your shots land while aiming with the controller: a dot, or a dot and a laser beam."
++	"#str_231390"	"Controller vibration strength in VR."
++	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
++	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
++	"#str_231393"	"Crouch in your room to crouch in the game."
+ }
+diff --git a/content/baseoq4/pak0/strings/english_openq4.lang b/content/baseoq4/pak0/strings/english_openq4.lang
+index 0080461..4a8708b 100644
+--- a/content/baseoq4/pak0/strings/english_openq4.lang
++++ b/content/baseoq4/pak0/strings/english_openq4.lang
+@@ -1379,4 +1379,89 @@
+ 	"#str_231306"	"Field of View"
+ 	"#str_231307"	"Button Prompts"
+ 	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
++	"#str_231309"	"Highlight an option to see what it does."
++	"#str_231310"	"Yes: the mouse looks up and down. No: moving the mouse forward and back walks instead, unless you hold Mouse Look."
++	"#str_231311"	"Reload automatically when the magazine runs empty."
++	"#str_231312"	"Switch to a new weapon automatically when you pick it up."
++	"#str_231313"	"Yes: press zoom once to zoom in and again to zoom out. No: hold zoom to stay zoomed in."
++	"#str_231314"	"Look speed while zoomed or scoped, as a percent of normal. With 360 Controller Feel the stick uses 360 Zoomed Speed instead."
++	"#str_231315"	"How much of the world you see, measured at 4:3; wide screens add more at the sides. Higher sees more, lower looks closer."
++	"#str_231316"	"Show bullet holes, scorch marks and blood on walls and floors."
++	"#str_231317"	"Show your weapon on screen. No hides it for a clearer view."
++	"#str_231318"	"Where your weapon sits on screen: to the right, centered, or lower right."
++	"#str_231319"	"Multiplayer: how pickups look. The original models, simple icons, or flat colored icons with or without a light sweep."
++	"#str_231320"	"Multiplayer: draw the weapons other players hold in flat icon colors, so you can tell what they carry at a glance."
++	"#str_231321"	"Multiplayer: show every player with the bright pro skins, so opponents are easier to spot."
++	"#str_231322"	"Flip vertical mouse look: moving the mouse forward looks down."
++	"#str_231323"	"Blend this many mouse readings together. Higher is smoother but adds a little delay; 1 is off."
++	"#str_231324"	"How fast the view turns when you move the mouse."
++	"#str_231325"	"Your mouse's counts per inch (CPI/DPI), so sensitivity follows real hand movement. 0 keeps the classic sensitivity."
++	"#str_231326"	"Smooth the view by averaging this many recent view angles after the mouse moves. 0 is off."
++	"#str_231327"	"Mouse acceleration, Quake Live style: faster swipes turn farther. Negative values slow fast swipes instead. 0 is off."
++	"#str_231328"	"How fast the mouse must move before acceleration starts."
++	"#str_231329"	"Shape of the acceleration curve. 2 matches Quake Live; higher ramps up more sharply."
++	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
++	"#str_231331"	"Use a gamepad. No ignores all controllers."
++	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
++	"#str_231333"	"The Xbox 360 aim assist: stick turning slows while your crosshair is over an enemy, so it is easier to stay on target."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
++	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
++	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
++	"#str_231338"	"Southpaw swaps the sticks: move with the right stick and look with the left."
++	"#str_231339"	"Which button icons to show. Automatic matches the controller you are using."
++	"#str_231340"	"How far a stick must move before it counts. Raise it if the view drifts on its own."
++	"#str_231341"	"How fast the view turns with the look stick."
++	"#str_231342"	"How fast the stick moves the weapon wheel's selection."
++	"#str_231343"	"Moves the weapon wheel left or right. 0 centers it; 27 is the original position."
++	"#str_231344"	"Shapes the look stick's response. Higher makes small movements slower for fine aim, with full speed at the edge."
++	"#str_231345"	"Flip vertical stick look: pushing up looks down."
++	"#str_231346"	"How far a trigger must be pulled before it counts as pressed."
++	"#str_231347"	"Controller vibration when you fire, take damage and more."
++	"#str_231348"	"Vibration strength. 1 is normal; up to 2 is stronger."
++	"#str_231349"	"Aim by tilting a controller that has motion sensors, such as PlayStation and Switch Pro controllers."
++	"#str_231350"	"How far the view turns when you tilt the controller."
++	"#str_231351"	"What the controller's touchpad does: nothing, move the menu cursor, look around, or work only as a button."
++	"#str_231352"	"How fast touchpad movement moves the cursor or the view."
++	"#str_231353"	"Use a touchscreen like a mouse in menus and loading screens."
++	"#str_231354"	"Below this battery percent, vibration is turned down to save power. 0 turns this off."
++	"#str_231355"	"The strongest vibration allowed while the battery is below the Low Battery Rumble level."
++	"#str_231356"	"Weapon Default gives each weapon its own crosshair. Custom uses the crosshair you pick below for every weapon."
++	"#str_231357"	"Pick the custom crosshair."
++	"#str_231358"	"Size of the custom crosshair."
++	"#str_231359"	"Color of the custom crosshair."
++	"#str_231360"	"Flash a marker on the crosshair when your shots hit."
++	"#str_231361"	"HUD style: Classic (the original), Remastered (kept inside the safe area), Minimal (the essentials), or Competitive (multiplayer)."
++	"#str_231362"	"Size of the HUD, separate from the menus."
++	"#str_231363"	"How far the HUD spreads on wide screens: within 16:9, within 21:9, or the full width."
++	"#str_231364"	"Moves the HUD in from the screen edges, in percent of the screen, for TVs that crop the picture."
++	"#str_231365"	"Yes: the objectives button opens and closes your objectives. No: they show only while you hold it."
++	"#str_231366"	"How solid the Remastered HUD is. Lower lets more of the game show through."
++	"#str_231367"	"Show which direction damage is coming from."
++	"#str_231368"	"Show a message when you pick something up."
++	"#str_231369"	"Briefly show your weapon list when you switch weapons."
++	"#str_231370"	"Tone down flashes: limits hit indicators, dims full-screen white flashes and removes the death afterimage."
++	"#str_231371"	"Bodies sink into the floor before they disappear. Ragdoll keeps ragdoll physics while they sink; No Ragdoll turns it off."
++	"#str_231372"	"How long bodies stay before they disappear. Stock keeps the game's own timing."
++	"#str_231373"	"The language for text and speech."
++	"#str_231374"	"The keys that open the console: Tilde alone, or Ctrl+Alt+Tilde so it can't open by accident."
++	"#str_231375"	"Skip cutscenes automatically as soon as they start."
++	"#str_231376"	"Field of view for your weapon only. 0 follows the main Field of View."
++	"#str_231377"	"With a Weapon FOV set: Classic keeps the weapon looking the same on any screen shape; Direct uses the value as is."
++	"#str_231378"	"Moves your weapon left or right on screen."
++	"#str_231379"	"Moves your weapon forward or back."
++	"#str_231380"	"Moves your weapon up or down."
++	"#str_231381"	"Your weapon kicks back on screen when it fires. No holds it still."
++	"#str_231382"	"Play in virtual reality with a connected headset."
++	"#str_231383"	"Aim where your weapon-hand controller points, or where you look."
++	"#str_231384"	"Which hand holds the weapon. Left also moves you with the right stick."
++	"#str_231385"	"Turn in fixed steps (Snap) or smoothly with the stick."
++	"#str_231386"	"How many degrees each snap turn rotates you."
++	"#str_231387"	"Which way the stick walks you: where your head faces, or where your off-hand controller points."
++	"#str_231388"	"Your character follows you as you walk around your room. Disabled keeps it in place."
++	"#str_231389"	"Show where your shots land while aiming with the controller: a dot, or a dot and a laser beam."
++	"#str_231390"	"Controller vibration strength in VR."
++	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
++	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
++	"#str_231393"	"Crouch in your room to crouch in the game."
+ }
+diff --git a/content/baseoq4/pak0/strings/french_openq4.lang b/content/baseoq4/pak0/strings/french_openq4.lang
+index e779e84..dd2fd18 100644
+--- a/content/baseoq4/pak0/strings/french_openq4.lang
++++ b/content/baseoq4/pak0/strings/french_openq4.lang
+@@ -1384,4 +1384,89 @@
+ 	"#str_231306"	"Field of View"
+ 	"#str_231307"	"Button Prompts"
+ 	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
++	"#str_231309"	"Highlight an option to see what it does."
++	"#str_231310"	"Yes: the mouse looks up and down. No: moving the mouse forward and back walks instead, unless you hold Mouse Look."
++	"#str_231311"	"Reload automatically when the magazine runs empty."
++	"#str_231312"	"Switch to a new weapon automatically when you pick it up."
++	"#str_231313"	"Yes: press zoom once to zoom in and again to zoom out. No: hold zoom to stay zoomed in."
++	"#str_231314"	"Look speed while zoomed or scoped, as a percent of normal. With 360 Controller Feel the stick uses 360 Zoomed Speed instead."
++	"#str_231315"	"How much of the world you see, measured at 4:3; wide screens add more at the sides. Higher sees more, lower looks closer."
++	"#str_231316"	"Show bullet holes, scorch marks and blood on walls and floors."
++	"#str_231317"	"Show your weapon on screen. No hides it for a clearer view."
++	"#str_231318"	"Where your weapon sits on screen: to the right, centered, or lower right."
++	"#str_231319"	"Multiplayer: how pickups look. The original models, simple icons, or flat colored icons with or without a light sweep."
++	"#str_231320"	"Multiplayer: draw the weapons other players hold in flat icon colors, so you can tell what they carry at a glance."
++	"#str_231321"	"Multiplayer: show every player with the bright pro skins, so opponents are easier to spot."
++	"#str_231322"	"Flip vertical mouse look: moving the mouse forward looks down."
++	"#str_231323"	"Blend this many mouse readings together. Higher is smoother but adds a little delay; 1 is off."
++	"#str_231324"	"How fast the view turns when you move the mouse."
++	"#str_231325"	"Your mouse's counts per inch (CPI/DPI), so sensitivity follows real hand movement. 0 keeps the classic sensitivity."
++	"#str_231326"	"Smooth the view by averaging this many recent view angles after the mouse moves. 0 is off."
++	"#str_231327"	"Mouse acceleration, Quake Live style: faster swipes turn farther. Negative values slow fast swipes instead. 0 is off."
++	"#str_231328"	"How fast the mouse must move before acceleration starts."
++	"#str_231329"	"Shape of the acceleration curve. 2 matches Quake Live; higher ramps up more sharply."
++	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
++	"#str_231331"	"Use a gamepad. No ignores all controllers."
++	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
++	"#str_231333"	"The Xbox 360 aim assist: stick turning slows while your crosshair is over an enemy, so it is easier to stay on target."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
++	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
++	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
++	"#str_231338"	"Southpaw swaps the sticks: move with the right stick and look with the left."
++	"#str_231339"	"Which button icons to show. Automatic matches the controller you are using."
++	"#str_231340"	"How far a stick must move before it counts. Raise it if the view drifts on its own."
++	"#str_231341"	"How fast the view turns with the look stick."
++	"#str_231342"	"How fast the stick moves the weapon wheel's selection."
++	"#str_231343"	"Moves the weapon wheel left or right. 0 centers it; 27 is the original position."
++	"#str_231344"	"Shapes the look stick's response. Higher makes small movements slower for fine aim, with full speed at the edge."
++	"#str_231345"	"Flip vertical stick look: pushing up looks down."
++	"#str_231346"	"How far a trigger must be pulled before it counts as pressed."
++	"#str_231347"	"Controller vibration when you fire, take damage and more."
++	"#str_231348"	"Vibration strength. 1 is normal; up to 2 is stronger."
++	"#str_231349"	"Aim by tilting a controller that has motion sensors, such as PlayStation and Switch Pro controllers."
++	"#str_231350"	"How far the view turns when you tilt the controller."
++	"#str_231351"	"What the controller's touchpad does: nothing, move the menu cursor, look around, or work only as a button."
++	"#str_231352"	"How fast touchpad movement moves the cursor or the view."
++	"#str_231353"	"Use a touchscreen like a mouse in menus and loading screens."
++	"#str_231354"	"Below this battery percent, vibration is turned down to save power. 0 turns this off."
++	"#str_231355"	"The strongest vibration allowed while the battery is below the Low Battery Rumble level."
++	"#str_231356"	"Weapon Default gives each weapon its own crosshair. Custom uses the crosshair you pick below for every weapon."
++	"#str_231357"	"Pick the custom crosshair."
++	"#str_231358"	"Size of the custom crosshair."
++	"#str_231359"	"Color of the custom crosshair."
++	"#str_231360"	"Flash a marker on the crosshair when your shots hit."
++	"#str_231361"	"HUD style: Classic (the original), Remastered (kept inside the safe area), Minimal (the essentials), or Competitive (multiplayer)."
++	"#str_231362"	"Size of the HUD, separate from the menus."
++	"#str_231363"	"How far the HUD spreads on wide screens: within 16:9, within 21:9, or the full width."
++	"#str_231364"	"Moves the HUD in from the screen edges, in percent of the screen, for TVs that crop the picture."
++	"#str_231365"	"Yes: the objectives button opens and closes your objectives. No: they show only while you hold it."
++	"#str_231366"	"How solid the Remastered HUD is. Lower lets more of the game show through."
++	"#str_231367"	"Show which direction damage is coming from."
++	"#str_231368"	"Show a message when you pick something up."
++	"#str_231369"	"Briefly show your weapon list when you switch weapons."
++	"#str_231370"	"Tone down flashes: limits hit indicators, dims full-screen white flashes and removes the death afterimage."
++	"#str_231371"	"Bodies sink into the floor before they disappear. Ragdoll keeps ragdoll physics while they sink; No Ragdoll turns it off."
++	"#str_231372"	"How long bodies stay before they disappear. Stock keeps the game's own timing."
++	"#str_231373"	"The language for text and speech."
++	"#str_231374"	"The keys that open the console: Tilde alone, or Ctrl+Alt+Tilde so it can't open by accident."
++	"#str_231375"	"Skip cutscenes automatically as soon as they start."
++	"#str_231376"	"Field of view for your weapon only. 0 follows the main Field of View."
++	"#str_231377"	"With a Weapon FOV set: Classic keeps the weapon looking the same on any screen shape; Direct uses the value as is."
++	"#str_231378"	"Moves your weapon left or right on screen."
++	"#str_231379"	"Moves your weapon forward or back."
++	"#str_231380"	"Moves your weapon up or down."
++	"#str_231381"	"Your weapon kicks back on screen when it fires. No holds it still."
++	"#str_231382"	"Play in virtual reality with a connected headset."
++	"#str_231383"	"Aim where your weapon-hand controller points, or where you look."
++	"#str_231384"	"Which hand holds the weapon. Left also moves you with the right stick."
++	"#str_231385"	"Turn in fixed steps (Snap) or smoothly with the stick."
++	"#str_231386"	"How many degrees each snap turn rotates you."
++	"#str_231387"	"Which way the stick walks you: where your head faces, or where your off-hand controller points."
++	"#str_231388"	"Your character follows you as you walk around your room. Disabled keeps it in place."
++	"#str_231389"	"Show where your shots land while aiming with the controller: a dot, or a dot and a laser beam."
++	"#str_231390"	"Controller vibration strength in VR."
++	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
++	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
++	"#str_231393"	"Crouch in your room to crouch in the game."
+ }
+diff --git a/content/baseoq4/pak0/strings/german_openq4.lang b/content/baseoq4/pak0/strings/german_openq4.lang
+index 07f4fac..d52ff47 100644
+--- a/content/baseoq4/pak0/strings/german_openq4.lang
++++ b/content/baseoq4/pak0/strings/german_openq4.lang
+@@ -1379,4 +1379,89 @@
+ 	"#str_231306"	"Field of View"
+ 	"#str_231307"	"Button Prompts"
+ 	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
++	"#str_231309"	"Highlight an option to see what it does."
++	"#str_231310"	"Yes: the mouse looks up and down. No: moving the mouse forward and back walks instead, unless you hold Mouse Look."
++	"#str_231311"	"Reload automatically when the magazine runs empty."
++	"#str_231312"	"Switch to a new weapon automatically when you pick it up."
++	"#str_231313"	"Yes: press zoom once to zoom in and again to zoom out. No: hold zoom to stay zoomed in."
++	"#str_231314"	"Look speed while zoomed or scoped, as a percent of normal. With 360 Controller Feel the stick uses 360 Zoomed Speed instead."
++	"#str_231315"	"How much of the world you see, measured at 4:3; wide screens add more at the sides. Higher sees more, lower looks closer."
++	"#str_231316"	"Show bullet holes, scorch marks and blood on walls and floors."
++	"#str_231317"	"Show your weapon on screen. No hides it for a clearer view."
++	"#str_231318"	"Where your weapon sits on screen: to the right, centered, or lower right."
++	"#str_231319"	"Multiplayer: how pickups look. The original models, simple icons, or flat colored icons with or without a light sweep."
++	"#str_231320"	"Multiplayer: draw the weapons other players hold in flat icon colors, so you can tell what they carry at a glance."
++	"#str_231321"	"Multiplayer: show every player with the bright pro skins, so opponents are easier to spot."
++	"#str_231322"	"Flip vertical mouse look: moving the mouse forward looks down."
++	"#str_231323"	"Blend this many mouse readings together. Higher is smoother but adds a little delay; 1 is off."
++	"#str_231324"	"How fast the view turns when you move the mouse."
++	"#str_231325"	"Your mouse's counts per inch (CPI/DPI), so sensitivity follows real hand movement. 0 keeps the classic sensitivity."
++	"#str_231326"	"Smooth the view by averaging this many recent view angles after the mouse moves. 0 is off."
++	"#str_231327"	"Mouse acceleration, Quake Live style: faster swipes turn farther. Negative values slow fast swipes instead. 0 is off."
++	"#str_231328"	"How fast the mouse must move before acceleration starts."
++	"#str_231329"	"Shape of the acceleration curve. 2 matches Quake Live; higher ramps up more sharply."
++	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
++	"#str_231331"	"Use a gamepad. No ignores all controllers."
++	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
++	"#str_231333"	"The Xbox 360 aim assist: stick turning slows while your crosshair is over an enemy, so it is easier to stay on target."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
++	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
++	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
++	"#str_231338"	"Southpaw swaps the sticks: move with the right stick and look with the left."
++	"#str_231339"	"Which button icons to show. Automatic matches the controller you are using."
++	"#str_231340"	"How far a stick must move before it counts. Raise it if the view drifts on its own."
++	"#str_231341"	"How fast the view turns with the look stick."
++	"#str_231342"	"How fast the stick moves the weapon wheel's selection."
++	"#str_231343"	"Moves the weapon wheel left or right. 0 centers it; 27 is the original position."
++	"#str_231344"	"Shapes the look stick's response. Higher makes small movements slower for fine aim, with full speed at the edge."
++	"#str_231345"	"Flip vertical stick look: pushing up looks down."
++	"#str_231346"	"How far a trigger must be pulled before it counts as pressed."
++	"#str_231347"	"Controller vibration when you fire, take damage and more."
++	"#str_231348"	"Vibration strength. 1 is normal; up to 2 is stronger."
++	"#str_231349"	"Aim by tilting a controller that has motion sensors, such as PlayStation and Switch Pro controllers."
++	"#str_231350"	"How far the view turns when you tilt the controller."
++	"#str_231351"	"What the controller's touchpad does: nothing, move the menu cursor, look around, or work only as a button."
++	"#str_231352"	"How fast touchpad movement moves the cursor or the view."
++	"#str_231353"	"Use a touchscreen like a mouse in menus and loading screens."
++	"#str_231354"	"Below this battery percent, vibration is turned down to save power. 0 turns this off."
++	"#str_231355"	"The strongest vibration allowed while the battery is below the Low Battery Rumble level."
++	"#str_231356"	"Weapon Default gives each weapon its own crosshair. Custom uses the crosshair you pick below for every weapon."
++	"#str_231357"	"Pick the custom crosshair."
++	"#str_231358"	"Size of the custom crosshair."
++	"#str_231359"	"Color of the custom crosshair."
++	"#str_231360"	"Flash a marker on the crosshair when your shots hit."
++	"#str_231361"	"HUD style: Classic (the original), Remastered (kept inside the safe area), Minimal (the essentials), or Competitive (multiplayer)."
++	"#str_231362"	"Size of the HUD, separate from the menus."
++	"#str_231363"	"How far the HUD spreads on wide screens: within 16:9, within 21:9, or the full width."
++	"#str_231364"	"Moves the HUD in from the screen edges, in percent of the screen, for TVs that crop the picture."
++	"#str_231365"	"Yes: the objectives button opens and closes your objectives. No: they show only while you hold it."
++	"#str_231366"	"How solid the Remastered HUD is. Lower lets more of the game show through."
++	"#str_231367"	"Show which direction damage is coming from."
++	"#str_231368"	"Show a message when you pick something up."
++	"#str_231369"	"Briefly show your weapon list when you switch weapons."
++	"#str_231370"	"Tone down flashes: limits hit indicators, dims full-screen white flashes and removes the death afterimage."
++	"#str_231371"	"Bodies sink into the floor before they disappear. Ragdoll keeps ragdoll physics while they sink; No Ragdoll turns it off."
++	"#str_231372"	"How long bodies stay before they disappear. Stock keeps the game's own timing."
++	"#str_231373"	"The language for text and speech."
++	"#str_231374"	"The keys that open the console: Tilde alone, or Ctrl+Alt+Tilde so it can't open by accident."
++	"#str_231375"	"Skip cutscenes automatically as soon as they start."
++	"#str_231376"	"Field of view for your weapon only. 0 follows the main Field of View."
++	"#str_231377"	"With a Weapon FOV set: Classic keeps the weapon looking the same on any screen shape; Direct uses the value as is."
++	"#str_231378"	"Moves your weapon left or right on screen."
++	"#str_231379"	"Moves your weapon forward or back."
++	"#str_231380"	"Moves your weapon up or down."
++	"#str_231381"	"Your weapon kicks back on screen when it fires. No holds it still."
++	"#str_231382"	"Play in virtual reality with a connected headset."
++	"#str_231383"	"Aim where your weapon-hand controller points, or where you look."
++	"#str_231384"	"Which hand holds the weapon. Left also moves you with the right stick."
++	"#str_231385"	"Turn in fixed steps (Snap) or smoothly with the stick."
++	"#str_231386"	"How many degrees each snap turn rotates you."
++	"#str_231387"	"Which way the stick walks you: where your head faces, or where your off-hand controller points."
++	"#str_231388"	"Your character follows you as you walk around your room. Disabled keeps it in place."
++	"#str_231389"	"Show where your shots land while aiming with the controller: a dot, or a dot and a laser beam."
++	"#str_231390"	"Controller vibration strength in VR."
++	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
++	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
++	"#str_231393"	"Crouch in your room to crouch in the game."
+ }
+diff --git a/content/baseoq4/pak0/strings/hungarian_openq4.lang b/content/baseoq4/pak0/strings/hungarian_openq4.lang
+index 95e323e..c2fe205 100644
+--- a/content/baseoq4/pak0/strings/hungarian_openq4.lang
++++ b/content/baseoq4/pak0/strings/hungarian_openq4.lang
+@@ -1379,4 +1379,89 @@
+ 	"#str_231306"	"Field of View"
+ 	"#str_231307"	"Button Prompts"
+ 	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
++	"#str_231309"	"Highlight an option to see what it does."
++	"#str_231310"	"Yes: the mouse looks up and down. No: moving the mouse forward and back walks instead, unless you hold Mouse Look."
++	"#str_231311"	"Reload automatically when the magazine runs empty."
++	"#str_231312"	"Switch to a new weapon automatically when you pick it up."
++	"#str_231313"	"Yes: press zoom once to zoom in and again to zoom out. No: hold zoom to stay zoomed in."
++	"#str_231314"	"Look speed while zoomed or scoped, as a percent of normal. With 360 Controller Feel the stick uses 360 Zoomed Speed instead."
++	"#str_231315"	"How much of the world you see, measured at 4:3; wide screens add more at the sides. Higher sees more, lower looks closer."
++	"#str_231316"	"Show bullet holes, scorch marks and blood on walls and floors."
++	"#str_231317"	"Show your weapon on screen. No hides it for a clearer view."
++	"#str_231318"	"Where your weapon sits on screen: to the right, centered, or lower right."
++	"#str_231319"	"Multiplayer: how pickups look. The original models, simple icons, or flat colored icons with or without a light sweep."
++	"#str_231320"	"Multiplayer: draw the weapons other players hold in flat icon colors, so you can tell what they carry at a glance."
++	"#str_231321"	"Multiplayer: show every player with the bright pro skins, so opponents are easier to spot."
++	"#str_231322"	"Flip vertical mouse look: moving the mouse forward looks down."
++	"#str_231323"	"Blend this many mouse readings together. Higher is smoother but adds a little delay; 1 is off."
++	"#str_231324"	"How fast the view turns when you move the mouse."
++	"#str_231325"	"Your mouse's counts per inch (CPI/DPI), so sensitivity follows real hand movement. 0 keeps the classic sensitivity."
++	"#str_231326"	"Smooth the view by averaging this many recent view angles after the mouse moves. 0 is off."
++	"#str_231327"	"Mouse acceleration, Quake Live style: faster swipes turn farther. Negative values slow fast swipes instead. 0 is off."
++	"#str_231328"	"How fast the mouse must move before acceleration starts."
++	"#str_231329"	"Shape of the acceleration curve. 2 matches Quake Live; higher ramps up more sharply."
++	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
++	"#str_231331"	"Use a gamepad. No ignores all controllers."
++	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
++	"#str_231333"	"The Xbox 360 aim assist: stick turning slows while your crosshair is over an enemy, so it is easier to stay on target."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
++	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
++	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
++	"#str_231338"	"Southpaw swaps the sticks: move with the right stick and look with the left."
++	"#str_231339"	"Which button icons to show. Automatic matches the controller you are using."
++	"#str_231340"	"How far a stick must move before it counts. Raise it if the view drifts on its own."
++	"#str_231341"	"How fast the view turns with the look stick."
++	"#str_231342"	"How fast the stick moves the weapon wheel's selection."
++	"#str_231343"	"Moves the weapon wheel left or right. 0 centers it; 27 is the original position."
++	"#str_231344"	"Shapes the look stick's response. Higher makes small movements slower for fine aim, with full speed at the edge."
++	"#str_231345"	"Flip vertical stick look: pushing up looks down."
++	"#str_231346"	"How far a trigger must be pulled before it counts as pressed."
++	"#str_231347"	"Controller vibration when you fire, take damage and more."
++	"#str_231348"	"Vibration strength. 1 is normal; up to 2 is stronger."
++	"#str_231349"	"Aim by tilting a controller that has motion sensors, such as PlayStation and Switch Pro controllers."
++	"#str_231350"	"How far the view turns when you tilt the controller."
++	"#str_231351"	"What the controller's touchpad does: nothing, move the menu cursor, look around, or work only as a button."
++	"#str_231352"	"How fast touchpad movement moves the cursor or the view."
++	"#str_231353"	"Use a touchscreen like a mouse in menus and loading screens."
++	"#str_231354"	"Below this battery percent, vibration is turned down to save power. 0 turns this off."
++	"#str_231355"	"The strongest vibration allowed while the battery is below the Low Battery Rumble level."
++	"#str_231356"	"Weapon Default gives each weapon its own crosshair. Custom uses the crosshair you pick below for every weapon."
++	"#str_231357"	"Pick the custom crosshair."
++	"#str_231358"	"Size of the custom crosshair."
++	"#str_231359"	"Color of the custom crosshair."
++	"#str_231360"	"Flash a marker on the crosshair when your shots hit."
++	"#str_231361"	"HUD style: Classic (the original), Remastered (kept inside the safe area), Minimal (the essentials), or Competitive (multiplayer)."
++	"#str_231362"	"Size of the HUD, separate from the menus."
++	"#str_231363"	"How far the HUD spreads on wide screens: within 16:9, within 21:9, or the full width."
++	"#str_231364"	"Moves the HUD in from the screen edges, in percent of the screen, for TVs that crop the picture."
++	"#str_231365"	"Yes: the objectives button opens and closes your objectives. No: they show only while you hold it."
++	"#str_231366"	"How solid the Remastered HUD is. Lower lets more of the game show through."
++	"#str_231367"	"Show which direction damage is coming from."
++	"#str_231368"	"Show a message when you pick something up."
++	"#str_231369"	"Briefly show your weapon list when you switch weapons."
++	"#str_231370"	"Tone down flashes: limits hit indicators, dims full-screen white flashes and removes the death afterimage."
++	"#str_231371"	"Bodies sink into the floor before they disappear. Ragdoll keeps ragdoll physics while they sink; No Ragdoll turns it off."
++	"#str_231372"	"How long bodies stay before they disappear. Stock keeps the game's own timing."
++	"#str_231373"	"The language for text and speech."
++	"#str_231374"	"The keys that open the console: Tilde alone, or Ctrl+Alt+Tilde so it can't open by accident."
++	"#str_231375"	"Skip cutscenes automatically as soon as they start."
++	"#str_231376"	"Field of view for your weapon only. 0 follows the main Field of View."
++	"#str_231377"	"With a Weapon FOV set: Classic keeps the weapon looking the same on any screen shape; Direct uses the value as is."
++	"#str_231378"	"Moves your weapon left or right on screen."
++	"#str_231379"	"Moves your weapon forward or back."
++	"#str_231380"	"Moves your weapon up or down."
++	"#str_231381"	"Your weapon kicks back on screen when it fires. No holds it still."
++	"#str_231382"	"Play in virtual reality with a connected headset."
++	"#str_231383"	"Aim where your weapon-hand controller points, or where you look."
++	"#str_231384"	"Which hand holds the weapon. Left also moves you with the right stick."
++	"#str_231385"	"Turn in fixed steps (Snap) or smoothly with the stick."
++	"#str_231386"	"How many degrees each snap turn rotates you."
++	"#str_231387"	"Which way the stick walks you: where your head faces, or where your off-hand controller points."
++	"#str_231388"	"Your character follows you as you walk around your room. Disabled keeps it in place."
++	"#str_231389"	"Show where your shots land while aiming with the controller: a dot, or a dot and a laser beam."
++	"#str_231390"	"Controller vibration strength in VR."
++	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
++	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
++	"#str_231393"	"Crouch in your room to crouch in the game."
+ }
+diff --git a/content/baseoq4/pak0/strings/italian_openq4.lang b/content/baseoq4/pak0/strings/italian_openq4.lang
+index d00a990..64996f1 100644
+--- a/content/baseoq4/pak0/strings/italian_openq4.lang
++++ b/content/baseoq4/pak0/strings/italian_openq4.lang
+@@ -1384,4 +1384,89 @@
+ 	"#str_231306"	"Field of View"
+ 	"#str_231307"	"Button Prompts"
+ 	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
++	"#str_231309"	"Highlight an option to see what it does."
++	"#str_231310"	"Yes: the mouse looks up and down. No: moving the mouse forward and back walks instead, unless you hold Mouse Look."
++	"#str_231311"	"Reload automatically when the magazine runs empty."
++	"#str_231312"	"Switch to a new weapon automatically when you pick it up."
++	"#str_231313"	"Yes: press zoom once to zoom in and again to zoom out. No: hold zoom to stay zoomed in."
++	"#str_231314"	"Look speed while zoomed or scoped, as a percent of normal. With 360 Controller Feel the stick uses 360 Zoomed Speed instead."
++	"#str_231315"	"How much of the world you see, measured at 4:3; wide screens add more at the sides. Higher sees more, lower looks closer."
++	"#str_231316"	"Show bullet holes, scorch marks and blood on walls and floors."
++	"#str_231317"	"Show your weapon on screen. No hides it for a clearer view."
++	"#str_231318"	"Where your weapon sits on screen: to the right, centered, or lower right."
++	"#str_231319"	"Multiplayer: how pickups look. The original models, simple icons, or flat colored icons with or without a light sweep."
++	"#str_231320"	"Multiplayer: draw the weapons other players hold in flat icon colors, so you can tell what they carry at a glance."
++	"#str_231321"	"Multiplayer: show every player with the bright pro skins, so opponents are easier to spot."
++	"#str_231322"	"Flip vertical mouse look: moving the mouse forward looks down."
++	"#str_231323"	"Blend this many mouse readings together. Higher is smoother but adds a little delay; 1 is off."
++	"#str_231324"	"How fast the view turns when you move the mouse."
++	"#str_231325"	"Your mouse's counts per inch (CPI/DPI), so sensitivity follows real hand movement. 0 keeps the classic sensitivity."
++	"#str_231326"	"Smooth the view by averaging this many recent view angles after the mouse moves. 0 is off."
++	"#str_231327"	"Mouse acceleration, Quake Live style: faster swipes turn farther. Negative values slow fast swipes instead. 0 is off."
++	"#str_231328"	"How fast the mouse must move before acceleration starts."
++	"#str_231329"	"Shape of the acceleration curve. 2 matches Quake Live; higher ramps up more sharply."
++	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
++	"#str_231331"	"Use a gamepad. No ignores all controllers."
++	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
++	"#str_231333"	"The Xbox 360 aim assist: stick turning slows while your crosshair is over an enemy, so it is easier to stay on target."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
++	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
++	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
++	"#str_231338"	"Southpaw swaps the sticks: move with the right stick and look with the left."
++	"#str_231339"	"Which button icons to show. Automatic matches the controller you are using."
++	"#str_231340"	"How far a stick must move before it counts. Raise it if the view drifts on its own."
++	"#str_231341"	"How fast the view turns with the look stick."
++	"#str_231342"	"How fast the stick moves the weapon wheel's selection."
++	"#str_231343"	"Moves the weapon wheel left or right. 0 centers it; 27 is the original position."
++	"#str_231344"	"Shapes the look stick's response. Higher makes small movements slower for fine aim, with full speed at the edge."
++	"#str_231345"	"Flip vertical stick look: pushing up looks down."
++	"#str_231346"	"How far a trigger must be pulled before it counts as pressed."
++	"#str_231347"	"Controller vibration when you fire, take damage and more."
++	"#str_231348"	"Vibration strength. 1 is normal; up to 2 is stronger."
++	"#str_231349"	"Aim by tilting a controller that has motion sensors, such as PlayStation and Switch Pro controllers."
++	"#str_231350"	"How far the view turns when you tilt the controller."
++	"#str_231351"	"What the controller's touchpad does: nothing, move the menu cursor, look around, or work only as a button."
++	"#str_231352"	"How fast touchpad movement moves the cursor or the view."
++	"#str_231353"	"Use a touchscreen like a mouse in menus and loading screens."
++	"#str_231354"	"Below this battery percent, vibration is turned down to save power. 0 turns this off."
++	"#str_231355"	"The strongest vibration allowed while the battery is below the Low Battery Rumble level."
++	"#str_231356"	"Weapon Default gives each weapon its own crosshair. Custom uses the crosshair you pick below for every weapon."
++	"#str_231357"	"Pick the custom crosshair."
++	"#str_231358"	"Size of the custom crosshair."
++	"#str_231359"	"Color of the custom crosshair."
++	"#str_231360"	"Flash a marker on the crosshair when your shots hit."
++	"#str_231361"	"HUD style: Classic (the original), Remastered (kept inside the safe area), Minimal (the essentials), or Competitive (multiplayer)."
++	"#str_231362"	"Size of the HUD, separate from the menus."
++	"#str_231363"	"How far the HUD spreads on wide screens: within 16:9, within 21:9, or the full width."
++	"#str_231364"	"Moves the HUD in from the screen edges, in percent of the screen, for TVs that crop the picture."
++	"#str_231365"	"Yes: the objectives button opens and closes your objectives. No: they show only while you hold it."
++	"#str_231366"	"How solid the Remastered HUD is. Lower lets more of the game show through."
++	"#str_231367"	"Show which direction damage is coming from."
++	"#str_231368"	"Show a message when you pick something up."
++	"#str_231369"	"Briefly show your weapon list when you switch weapons."
++	"#str_231370"	"Tone down flashes: limits hit indicators, dims full-screen white flashes and removes the death afterimage."
++	"#str_231371"	"Bodies sink into the floor before they disappear. Ragdoll keeps ragdoll physics while they sink; No Ragdoll turns it off."
++	"#str_231372"	"How long bodies stay before they disappear. Stock keeps the game's own timing."
++	"#str_231373"	"The language for text and speech."
++	"#str_231374"	"The keys that open the console: Tilde alone, or Ctrl+Alt+Tilde so it can't open by accident."
++	"#str_231375"	"Skip cutscenes automatically as soon as they start."
++	"#str_231376"	"Field of view for your weapon only. 0 follows the main Field of View."
++	"#str_231377"	"With a Weapon FOV set: Classic keeps the weapon looking the same on any screen shape; Direct uses the value as is."
++	"#str_231378"	"Moves your weapon left or right on screen."
++	"#str_231379"	"Moves your weapon forward or back."
++	"#str_231380"	"Moves your weapon up or down."
++	"#str_231381"	"Your weapon kicks back on screen when it fires. No holds it still."
++	"#str_231382"	"Play in virtual reality with a connected headset."
++	"#str_231383"	"Aim where your weapon-hand controller points, or where you look."
++	"#str_231384"	"Which hand holds the weapon. Left also moves you with the right stick."
++	"#str_231385"	"Turn in fixed steps (Snap) or smoothly with the stick."
++	"#str_231386"	"How many degrees each snap turn rotates you."
++	"#str_231387"	"Which way the stick walks you: where your head faces, or where your off-hand controller points."
++	"#str_231388"	"Your character follows you as you walk around your room. Disabled keeps it in place."
++	"#str_231389"	"Show where your shots land while aiming with the controller: a dot, or a dot and a laser beam."
++	"#str_231390"	"Controller vibration strength in VR."
++	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
++	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
++	"#str_231393"	"Crouch in your room to crouch in the game."
+ }
+diff --git a/content/baseoq4/pak0/strings/polish_openq4.lang b/content/baseoq4/pak0/strings/polish_openq4.lang
+index 231fc23..3deae05 100644
+--- a/content/baseoq4/pak0/strings/polish_openq4.lang
++++ b/content/baseoq4/pak0/strings/polish_openq4.lang
+@@ -1435,4 +1435,89 @@
+ 	"#str_231306"	"Field of View"
+ 	"#str_231307"	"Button Prompts"
+ 	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
++	"#str_231309"	"Highlight an option to see what it does."
++	"#str_231310"	"Yes: the mouse looks up and down. No: moving the mouse forward and back walks instead, unless you hold Mouse Look."
++	"#str_231311"	"Reload automatically when the magazine runs empty."
++	"#str_231312"	"Switch to a new weapon automatically when you pick it up."
++	"#str_231313"	"Yes: press zoom once to zoom in and again to zoom out. No: hold zoom to stay zoomed in."
++	"#str_231314"	"Look speed while zoomed or scoped, as a percent of normal. With 360 Controller Feel the stick uses 360 Zoomed Speed instead."
++	"#str_231315"	"How much of the world you see, measured at 4:3; wide screens add more at the sides. Higher sees more, lower looks closer."
++	"#str_231316"	"Show bullet holes, scorch marks and blood on walls and floors."
++	"#str_231317"	"Show your weapon on screen. No hides it for a clearer view."
++	"#str_231318"	"Where your weapon sits on screen: to the right, centered, or lower right."
++	"#str_231319"	"Multiplayer: how pickups look. The original models, simple icons, or flat colored icons with or without a light sweep."
++	"#str_231320"	"Multiplayer: draw the weapons other players hold in flat icon colors, so you can tell what they carry at a glance."
++	"#str_231321"	"Multiplayer: show every player with the bright pro skins, so opponents are easier to spot."
++	"#str_231322"	"Flip vertical mouse look: moving the mouse forward looks down."
++	"#str_231323"	"Blend this many mouse readings together. Higher is smoother but adds a little delay; 1 is off."
++	"#str_231324"	"How fast the view turns when you move the mouse."
++	"#str_231325"	"Your mouse's counts per inch (CPI/DPI), so sensitivity follows real hand movement. 0 keeps the classic sensitivity."
++	"#str_231326"	"Smooth the view by averaging this many recent view angles after the mouse moves. 0 is off."
++	"#str_231327"	"Mouse acceleration, Quake Live style: faster swipes turn farther. Negative values slow fast swipes instead. 0 is off."
++	"#str_231328"	"How fast the mouse must move before acceleration starts."
++	"#str_231329"	"Shape of the acceleration curve. 2 matches Quake Live; higher ramps up more sharply."
++	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
++	"#str_231331"	"Use a gamepad. No ignores all controllers."
++	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
++	"#str_231333"	"The Xbox 360 aim assist: stick turning slows while your crosshair is over an enemy, so it is easier to stay on target."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
++	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
++	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
++	"#str_231338"	"Southpaw swaps the sticks: move with the right stick and look with the left."
++	"#str_231339"	"Which button icons to show. Automatic matches the controller you are using."
++	"#str_231340"	"How far a stick must move before it counts. Raise it if the view drifts on its own."
++	"#str_231341"	"How fast the view turns with the look stick."
++	"#str_231342"	"How fast the stick moves the weapon wheel's selection."
++	"#str_231343"	"Moves the weapon wheel left or right. 0 centers it; 27 is the original position."
++	"#str_231344"	"Shapes the look stick's response. Higher makes small movements slower for fine aim, with full speed at the edge."
++	"#str_231345"	"Flip vertical stick look: pushing up looks down."
++	"#str_231346"	"How far a trigger must be pulled before it counts as pressed."
++	"#str_231347"	"Controller vibration when you fire, take damage and more."
++	"#str_231348"	"Vibration strength. 1 is normal; up to 2 is stronger."
++	"#str_231349"	"Aim by tilting a controller that has motion sensors, such as PlayStation and Switch Pro controllers."
++	"#str_231350"	"How far the view turns when you tilt the controller."
++	"#str_231351"	"What the controller's touchpad does: nothing, move the menu cursor, look around, or work only as a button."
++	"#str_231352"	"How fast touchpad movement moves the cursor or the view."
++	"#str_231353"	"Use a touchscreen like a mouse in menus and loading screens."
++	"#str_231354"	"Below this battery percent, vibration is turned down to save power. 0 turns this off."
++	"#str_231355"	"The strongest vibration allowed while the battery is below the Low Battery Rumble level."
++	"#str_231356"	"Weapon Default gives each weapon its own crosshair. Custom uses the crosshair you pick below for every weapon."
++	"#str_231357"	"Pick the custom crosshair."
++	"#str_231358"	"Size of the custom crosshair."
++	"#str_231359"	"Color of the custom crosshair."
++	"#str_231360"	"Flash a marker on the crosshair when your shots hit."
++	"#str_231361"	"HUD style: Classic (the original), Remastered (kept inside the safe area), Minimal (the essentials), or Competitive (multiplayer)."
++	"#str_231362"	"Size of the HUD, separate from the menus."
++	"#str_231363"	"How far the HUD spreads on wide screens: within 16:9, within 21:9, or the full width."
++	"#str_231364"	"Moves the HUD in from the screen edges, in percent of the screen, for TVs that crop the picture."
++	"#str_231365"	"Yes: the objectives button opens and closes your objectives. No: they show only while you hold it."
++	"#str_231366"	"How solid the Remastered HUD is. Lower lets more of the game show through."
++	"#str_231367"	"Show which direction damage is coming from."
++	"#str_231368"	"Show a message when you pick something up."
++	"#str_231369"	"Briefly show your weapon list when you switch weapons."
++	"#str_231370"	"Tone down flashes: limits hit indicators, dims full-screen white flashes and removes the death afterimage."
++	"#str_231371"	"Bodies sink into the floor before they disappear. Ragdoll keeps ragdoll physics while they sink; No Ragdoll turns it off."
++	"#str_231372"	"How long bodies stay before they disappear. Stock keeps the game's own timing."
++	"#str_231373"	"The language for text and speech."
++	"#str_231374"	"The keys that open the console: Tilde alone, or Ctrl+Alt+Tilde so it can't open by accident."
++	"#str_231375"	"Skip cutscenes automatically as soon as they start."
++	"#str_231376"	"Field of view for your weapon only. 0 follows the main Field of View."
++	"#str_231377"	"With a Weapon FOV set: Classic keeps the weapon looking the same on any screen shape; Direct uses the value as is."
++	"#str_231378"	"Moves your weapon left or right on screen."
++	"#str_231379"	"Moves your weapon forward or back."
++	"#str_231380"	"Moves your weapon up or down."
++	"#str_231381"	"Your weapon kicks back on screen when it fires. No holds it still."
++	"#str_231382"	"Play in virtual reality with a connected headset."
++	"#str_231383"	"Aim where your weapon-hand controller points, or where you look."
++	"#str_231384"	"Which hand holds the weapon. Left also moves you with the right stick."
++	"#str_231385"	"Turn in fixed steps (Snap) or smoothly with the stick."
++	"#str_231386"	"How many degrees each snap turn rotates you."
++	"#str_231387"	"Which way the stick walks you: where your head faces, or where your off-hand controller points."
++	"#str_231388"	"Your character follows you as you walk around your room. Disabled keeps it in place."
++	"#str_231389"	"Show where your shots land while aiming with the controller: a dot, or a dot and a laser beam."
++	"#str_231390"	"Controller vibration strength in VR."
++	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
++	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
++	"#str_231393"	"Crouch in your room to crouch in the game."
+ }
+diff --git a/content/baseoq4/pak0/strings/russian_openq4.lang b/content/baseoq4/pak0/strings/russian_openq4.lang
+index 88c5da6..f2345ed 100644
+--- a/content/baseoq4/pak0/strings/russian_openq4.lang
++++ b/content/baseoq4/pak0/strings/russian_openq4.lang
+@@ -1435,4 +1435,89 @@
+ 	"#str_231306"	"Field of View"
+ 	"#str_231307"	"Button Prompts"
+ 	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
++	"#str_231309"	"Highlight an option to see what it does."
++	"#str_231310"	"Yes: the mouse looks up and down. No: moving the mouse forward and back walks instead, unless you hold Mouse Look."
++	"#str_231311"	"Reload automatically when the magazine runs empty."
++	"#str_231312"	"Switch to a new weapon automatically when you pick it up."
++	"#str_231313"	"Yes: press zoom once to zoom in and again to zoom out. No: hold zoom to stay zoomed in."
++	"#str_231314"	"Look speed while zoomed or scoped, as a percent of normal. With 360 Controller Feel the stick uses 360 Zoomed Speed instead."
++	"#str_231315"	"How much of the world you see, measured at 4:3; wide screens add more at the sides. Higher sees more, lower looks closer."
++	"#str_231316"	"Show bullet holes, scorch marks and blood on walls and floors."
++	"#str_231317"	"Show your weapon on screen. No hides it for a clearer view."
++	"#str_231318"	"Where your weapon sits on screen: to the right, centered, or lower right."
++	"#str_231319"	"Multiplayer: how pickups look. The original models, simple icons, or flat colored icons with or without a light sweep."
++	"#str_231320"	"Multiplayer: draw the weapons other players hold in flat icon colors, so you can tell what they carry at a glance."
++	"#str_231321"	"Multiplayer: show every player with the bright pro skins, so opponents are easier to spot."
++	"#str_231322"	"Flip vertical mouse look: moving the mouse forward looks down."
++	"#str_231323"	"Blend this many mouse readings together. Higher is smoother but adds a little delay; 1 is off."
++	"#str_231324"	"How fast the view turns when you move the mouse."
++	"#str_231325"	"Your mouse's counts per inch (CPI/DPI), so sensitivity follows real hand movement. 0 keeps the classic sensitivity."
++	"#str_231326"	"Smooth the view by averaging this many recent view angles after the mouse moves. 0 is off."
++	"#str_231327"	"Mouse acceleration, Quake Live style: faster swipes turn farther. Negative values slow fast swipes instead. 0 is off."
++	"#str_231328"	"How fast the mouse must move before acceleration starts."
++	"#str_231329"	"Shape of the acceleration curve. 2 matches Quake Live; higher ramps up more sharply."
++	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
++	"#str_231331"	"Use a gamepad. No ignores all controllers."
++	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
++	"#str_231333"	"The Xbox 360 aim assist: stick turning slows while your crosshair is over an enemy, so it is easier to stay on target."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
++	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
++	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
++	"#str_231338"	"Southpaw swaps the sticks: move with the right stick and look with the left."
++	"#str_231339"	"Which button icons to show. Automatic matches the controller you are using."
++	"#str_231340"	"How far a stick must move before it counts. Raise it if the view drifts on its own."
++	"#str_231341"	"How fast the view turns with the look stick."
++	"#str_231342"	"How fast the stick moves the weapon wheel's selection."
++	"#str_231343"	"Moves the weapon wheel left or right. 0 centers it; 27 is the original position."
++	"#str_231344"	"Shapes the look stick's response. Higher makes small movements slower for fine aim, with full speed at the edge."
++	"#str_231345"	"Flip vertical stick look: pushing up looks down."
++	"#str_231346"	"How far a trigger must be pulled before it counts as pressed."
++	"#str_231347"	"Controller vibration when you fire, take damage and more."
++	"#str_231348"	"Vibration strength. 1 is normal; up to 2 is stronger."
++	"#str_231349"	"Aim by tilting a controller that has motion sensors, such as PlayStation and Switch Pro controllers."
++	"#str_231350"	"How far the view turns when you tilt the controller."
++	"#str_231351"	"What the controller's touchpad does: nothing, move the menu cursor, look around, or work only as a button."
++	"#str_231352"	"How fast touchpad movement moves the cursor or the view."
++	"#str_231353"	"Use a touchscreen like a mouse in menus and loading screens."
++	"#str_231354"	"Below this battery percent, vibration is turned down to save power. 0 turns this off."
++	"#str_231355"	"The strongest vibration allowed while the battery is below the Low Battery Rumble level."
++	"#str_231356"	"Weapon Default gives each weapon its own crosshair. Custom uses the crosshair you pick below for every weapon."
++	"#str_231357"	"Pick the custom crosshair."
++	"#str_231358"	"Size of the custom crosshair."
++	"#str_231359"	"Color of the custom crosshair."
++	"#str_231360"	"Flash a marker on the crosshair when your shots hit."
++	"#str_231361"	"HUD style: Classic (the original), Remastered (kept inside the safe area), Minimal (the essentials), or Competitive (multiplayer)."
++	"#str_231362"	"Size of the HUD, separate from the menus."
++	"#str_231363"	"How far the HUD spreads on wide screens: within 16:9, within 21:9, or the full width."
++	"#str_231364"	"Moves the HUD in from the screen edges, in percent of the screen, for TVs that crop the picture."
++	"#str_231365"	"Yes: the objectives button opens and closes your objectives. No: they show only while you hold it."
++	"#str_231366"	"How solid the Remastered HUD is. Lower lets more of the game show through."
++	"#str_231367"	"Show which direction damage is coming from."
++	"#str_231368"	"Show a message when you pick something up."
++	"#str_231369"	"Briefly show your weapon list when you switch weapons."
++	"#str_231370"	"Tone down flashes: limits hit indicators, dims full-screen white flashes and removes the death afterimage."
++	"#str_231371"	"Bodies sink into the floor before they disappear. Ragdoll keeps ragdoll physics while they sink; No Ragdoll turns it off."
++	"#str_231372"	"How long bodies stay before they disappear. Stock keeps the game's own timing."
++	"#str_231373"	"The language for text and speech."
++	"#str_231374"	"The keys that open the console: Tilde alone, or Ctrl+Alt+Tilde so it can't open by accident."
++	"#str_231375"	"Skip cutscenes automatically as soon as they start."
++	"#str_231376"	"Field of view for your weapon only. 0 follows the main Field of View."
++	"#str_231377"	"With a Weapon FOV set: Classic keeps the weapon looking the same on any screen shape; Direct uses the value as is."
++	"#str_231378"	"Moves your weapon left or right on screen."
++	"#str_231379"	"Moves your weapon forward or back."
++	"#str_231380"	"Moves your weapon up or down."
++	"#str_231381"	"Your weapon kicks back on screen when it fires. No holds it still."
++	"#str_231382"	"Play in virtual reality with a connected headset."
++	"#str_231383"	"Aim where your weapon-hand controller points, or where you look."
++	"#str_231384"	"Which hand holds the weapon. Left also moves you with the right stick."
++	"#str_231385"	"Turn in fixed steps (Snap) or smoothly with the stick."
++	"#str_231386"	"How many degrees each snap turn rotates you."
++	"#str_231387"	"Which way the stick walks you: where your head faces, or where your off-hand controller points."
++	"#str_231388"	"Your character follows you as you walk around your room. Disabled keeps it in place."
++	"#str_231389"	"Show where your shots land while aiming with the controller: a dot, or a dot and a laser beam."
++	"#str_231390"	"Controller vibration strength in VR."
++	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
++	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
++	"#str_231393"	"Crouch in your room to crouch in the game."
+ }
+diff --git a/content/baseoq4/pak0/strings/spanish_openq4.lang b/content/baseoq4/pak0/strings/spanish_openq4.lang
+index 3ffcc79..9cbd960 100644
+--- a/content/baseoq4/pak0/strings/spanish_openq4.lang
++++ b/content/baseoq4/pak0/strings/spanish_openq4.lang
+@@ -1379,4 +1379,89 @@
+ 	"#str_231306"	"Field of View"
+ 	"#str_231307"	"Button Prompts"
+ 	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
++	"#str_231309"	"Highlight an option to see what it does."
++	"#str_231310"	"Yes: the mouse looks up and down. No: moving the mouse forward and back walks instead, unless you hold Mouse Look."
++	"#str_231311"	"Reload automatically when the magazine runs empty."
++	"#str_231312"	"Switch to a new weapon automatically when you pick it up."
++	"#str_231313"	"Yes: press zoom once to zoom in and again to zoom out. No: hold zoom to stay zoomed in."
++	"#str_231314"	"Look speed while zoomed or scoped, as a percent of normal. With 360 Controller Feel the stick uses 360 Zoomed Speed instead."
++	"#str_231315"	"How much of the world you see, measured at 4:3; wide screens add more at the sides. Higher sees more, lower looks closer."
++	"#str_231316"	"Show bullet holes, scorch marks and blood on walls and floors."
++	"#str_231317"	"Show your weapon on screen. No hides it for a clearer view."
++	"#str_231318"	"Where your weapon sits on screen: to the right, centered, or lower right."
++	"#str_231319"	"Multiplayer: how pickups look. The original models, simple icons, or flat colored icons with or without a light sweep."
++	"#str_231320"	"Multiplayer: draw the weapons other players hold in flat icon colors, so you can tell what they carry at a glance."
++	"#str_231321"	"Multiplayer: show every player with the bright pro skins, so opponents are easier to spot."
++	"#str_231322"	"Flip vertical mouse look: moving the mouse forward looks down."
++	"#str_231323"	"Blend this many mouse readings together. Higher is smoother but adds a little delay; 1 is off."
++	"#str_231324"	"How fast the view turns when you move the mouse."
++	"#str_231325"	"Your mouse's counts per inch (CPI/DPI), so sensitivity follows real hand movement. 0 keeps the classic sensitivity."
++	"#str_231326"	"Smooth the view by averaging this many recent view angles after the mouse moves. 0 is off."
++	"#str_231327"	"Mouse acceleration, Quake Live style: faster swipes turn farther. Negative values slow fast swipes instead. 0 is off."
++	"#str_231328"	"How fast the mouse must move before acceleration starts."
++	"#str_231329"	"Shape of the acceleration curve. 2 matches Quake Live; higher ramps up more sharply."
++	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
++	"#str_231331"	"Use a gamepad. No ignores all controllers."
++	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
++	"#str_231333"	"The Xbox 360 aim assist: stick turning slows while your crosshair is over an enemy, so it is easier to stay on target."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
++	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
++	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
++	"#str_231338"	"Southpaw swaps the sticks: move with the right stick and look with the left."
++	"#str_231339"	"Which button icons to show. Automatic matches the controller you are using."
++	"#str_231340"	"How far a stick must move before it counts. Raise it if the view drifts on its own."
++	"#str_231341"	"How fast the view turns with the look stick."
++	"#str_231342"	"How fast the stick moves the weapon wheel's selection."
++	"#str_231343"	"Moves the weapon wheel left or right. 0 centers it; 27 is the original position."
++	"#str_231344"	"Shapes the look stick's response. Higher makes small movements slower for fine aim, with full speed at the edge."
++	"#str_231345"	"Flip vertical stick look: pushing up looks down."
++	"#str_231346"	"How far a trigger must be pulled before it counts as pressed."
++	"#str_231347"	"Controller vibration when you fire, take damage and more."
++	"#str_231348"	"Vibration strength. 1 is normal; up to 2 is stronger."
++	"#str_231349"	"Aim by tilting a controller that has motion sensors, such as PlayStation and Switch Pro controllers."
++	"#str_231350"	"How far the view turns when you tilt the controller."
++	"#str_231351"	"What the controller's touchpad does: nothing, move the menu cursor, look around, or work only as a button."
++	"#str_231352"	"How fast touchpad movement moves the cursor or the view."
++	"#str_231353"	"Use a touchscreen like a mouse in menus and loading screens."
++	"#str_231354"	"Below this battery percent, vibration is turned down to save power. 0 turns this off."
++	"#str_231355"	"The strongest vibration allowed while the battery is below the Low Battery Rumble level."
++	"#str_231356"	"Weapon Default gives each weapon its own crosshair. Custom uses the crosshair you pick below for every weapon."
++	"#str_231357"	"Pick the custom crosshair."
++	"#str_231358"	"Size of the custom crosshair."
++	"#str_231359"	"Color of the custom crosshair."
++	"#str_231360"	"Flash a marker on the crosshair when your shots hit."
++	"#str_231361"	"HUD style: Classic (the original), Remastered (kept inside the safe area), Minimal (the essentials), or Competitive (multiplayer)."
++	"#str_231362"	"Size of the HUD, separate from the menus."
++	"#str_231363"	"How far the HUD spreads on wide screens: within 16:9, within 21:9, or the full width."
++	"#str_231364"	"Moves the HUD in from the screen edges, in percent of the screen, for TVs that crop the picture."
++	"#str_231365"	"Yes: the objectives button opens and closes your objectives. No: they show only while you hold it."
++	"#str_231366"	"How solid the Remastered HUD is. Lower lets more of the game show through."
++	"#str_231367"	"Show which direction damage is coming from."
++	"#str_231368"	"Show a message when you pick something up."
++	"#str_231369"	"Briefly show your weapon list when you switch weapons."
++	"#str_231370"	"Tone down flashes: limits hit indicators, dims full-screen white flashes and removes the death afterimage."
++	"#str_231371"	"Bodies sink into the floor before they disappear. Ragdoll keeps ragdoll physics while they sink; No Ragdoll turns it off."
++	"#str_231372"	"How long bodies stay before they disappear. Stock keeps the game's own timing."
++	"#str_231373"	"The language for text and speech."
++	"#str_231374"	"The keys that open the console: Tilde alone, or Ctrl+Alt+Tilde so it can't open by accident."
++	"#str_231375"	"Skip cutscenes automatically as soon as they start."
++	"#str_231376"	"Field of view for your weapon only. 0 follows the main Field of View."
++	"#str_231377"	"With a Weapon FOV set: Classic keeps the weapon looking the same on any screen shape; Direct uses the value as is."
++	"#str_231378"	"Moves your weapon left or right on screen."
++	"#str_231379"	"Moves your weapon forward or back."
++	"#str_231380"	"Moves your weapon up or down."
++	"#str_231381"	"Your weapon kicks back on screen when it fires. No holds it still."
++	"#str_231382"	"Play in virtual reality with a connected headset."
++	"#str_231383"	"Aim where your weapon-hand controller points, or where you look."
++	"#str_231384"	"Which hand holds the weapon. Left also moves you with the right stick."
++	"#str_231385"	"Turn in fixed steps (Snap) or smoothly with the stick."
++	"#str_231386"	"How many degrees each snap turn rotates you."
++	"#str_231387"	"Which way the stick walks you: where your head faces, or where your off-hand controller points."
++	"#str_231388"	"Your character follows you as you walk around your room. Disabled keeps it in place."
++	"#str_231389"	"Show where your shots land while aiming with the controller: a dot, or a dot and a laser beam."
++	"#str_231390"	"Controller vibration strength in VR."
++	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
++	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
++	"#str_231393"	"Crouch in your room to crouch in the game."
+ }
+diff --git a/content/baseoq4/pak0/strings/turkish_openq4.lang b/content/baseoq4/pak0/strings/turkish_openq4.lang
+index 2cbe5f3..1c7836d 100644
+--- a/content/baseoq4/pak0/strings/turkish_openq4.lang
++++ b/content/baseoq4/pak0/strings/turkish_openq4.lang
+@@ -1379,4 +1379,89 @@
+ 	"#str_231306"	"Field of View"
+ 	"#str_231307"	"Button Prompts"
+ 	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
++	"#str_231309"	"Highlight an option to see what it does."
++	"#str_231310"	"Yes: the mouse looks up and down. No: moving the mouse forward and back walks instead, unless you hold Mouse Look."
++	"#str_231311"	"Reload automatically when the magazine runs empty."
++	"#str_231312"	"Switch to a new weapon automatically when you pick it up."
++	"#str_231313"	"Yes: press zoom once to zoom in and again to zoom out. No: hold zoom to stay zoomed in."
++	"#str_231314"	"Look speed while zoomed or scoped, as a percent of normal. With 360 Controller Feel the stick uses 360 Zoomed Speed instead."
++	"#str_231315"	"How much of the world you see, measured at 4:3; wide screens add more at the sides. Higher sees more, lower looks closer."
++	"#str_231316"	"Show bullet holes, scorch marks and blood on walls and floors."
++	"#str_231317"	"Show your weapon on screen. No hides it for a clearer view."
++	"#str_231318"	"Where your weapon sits on screen: to the right, centered, or lower right."
++	"#str_231319"	"Multiplayer: how pickups look. The original models, simple icons, or flat colored icons with or without a light sweep."
++	"#str_231320"	"Multiplayer: draw the weapons other players hold in flat icon colors, so you can tell what they carry at a glance."
++	"#str_231321"	"Multiplayer: show every player with the bright pro skins, so opponents are easier to spot."
++	"#str_231322"	"Flip vertical mouse look: moving the mouse forward looks down."
++	"#str_231323"	"Blend this many mouse readings together. Higher is smoother but adds a little delay; 1 is off."
++	"#str_231324"	"How fast the view turns when you move the mouse."
++	"#str_231325"	"Your mouse's counts per inch (CPI/DPI), so sensitivity follows real hand movement. 0 keeps the classic sensitivity."
++	"#str_231326"	"Smooth the view by averaging this many recent view angles after the mouse moves. 0 is off."
++	"#str_231327"	"Mouse acceleration, Quake Live style: faster swipes turn farther. Negative values slow fast swipes instead. 0 is off."
++	"#str_231328"	"How fast the mouse must move before acceleration starts."
++	"#str_231329"	"Shape of the acceleration curve. 2 matches Quake Live; higher ramps up more sharply."
++	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
++	"#str_231331"	"Use a gamepad. No ignores all controllers."
++	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
++	"#str_231333"	"The Xbox 360 aim assist: stick turning slows while your crosshair is over an enemy, so it is easier to stay on target."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
++	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
++	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
++	"#str_231338"	"Southpaw swaps the sticks: move with the right stick and look with the left."
++	"#str_231339"	"Which button icons to show. Automatic matches the controller you are using."
++	"#str_231340"	"How far a stick must move before it counts. Raise it if the view drifts on its own."
++	"#str_231341"	"How fast the view turns with the look stick."
++	"#str_231342"	"How fast the stick moves the weapon wheel's selection."
++	"#str_231343"	"Moves the weapon wheel left or right. 0 centers it; 27 is the original position."
++	"#str_231344"	"Shapes the look stick's response. Higher makes small movements slower for fine aim, with full speed at the edge."
++	"#str_231345"	"Flip vertical stick look: pushing up looks down."
++	"#str_231346"	"How far a trigger must be pulled before it counts as pressed."
++	"#str_231347"	"Controller vibration when you fire, take damage and more."
++	"#str_231348"	"Vibration strength. 1 is normal; up to 2 is stronger."
++	"#str_231349"	"Aim by tilting a controller that has motion sensors, such as PlayStation and Switch Pro controllers."
++	"#str_231350"	"How far the view turns when you tilt the controller."
++	"#str_231351"	"What the controller's touchpad does: nothing, move the menu cursor, look around, or work only as a button."
++	"#str_231352"	"How fast touchpad movement moves the cursor or the view."
++	"#str_231353"	"Use a touchscreen like a mouse in menus and loading screens."
++	"#str_231354"	"Below this battery percent, vibration is turned down to save power. 0 turns this off."
++	"#str_231355"	"The strongest vibration allowed while the battery is below the Low Battery Rumble level."
++	"#str_231356"	"Weapon Default gives each weapon its own crosshair. Custom uses the crosshair you pick below for every weapon."
++	"#str_231357"	"Pick the custom crosshair."
++	"#str_231358"	"Size of the custom crosshair."
++	"#str_231359"	"Color of the custom crosshair."
++	"#str_231360"	"Flash a marker on the crosshair when your shots hit."
++	"#str_231361"	"HUD style: Classic (the original), Remastered (kept inside the safe area), Minimal (the essentials), or Competitive (multiplayer)."
++	"#str_231362"	"Size of the HUD, separate from the menus."
++	"#str_231363"	"How far the HUD spreads on wide screens: within 16:9, within 21:9, or the full width."
++	"#str_231364"	"Moves the HUD in from the screen edges, in percent of the screen, for TVs that crop the picture."
++	"#str_231365"	"Yes: the objectives button opens and closes your objectives. No: they show only while you hold it."
++	"#str_231366"	"How solid the Remastered HUD is. Lower lets more of the game show through."
++	"#str_231367"	"Show which direction damage is coming from."
++	"#str_231368"	"Show a message when you pick something up."
++	"#str_231369"	"Briefly show your weapon list when you switch weapons."
++	"#str_231370"	"Tone down flashes: limits hit indicators, dims full-screen white flashes and removes the death afterimage."
++	"#str_231371"	"Bodies sink into the floor before they disappear. Ragdoll keeps ragdoll physics while they sink; No Ragdoll turns it off."
++	"#str_231372"	"How long bodies stay before they disappear. Stock keeps the game's own timing."
++	"#str_231373"	"The language for text and speech."
++	"#str_231374"	"The keys that open the console: Tilde alone, or Ctrl+Alt+Tilde so it can't open by accident."
++	"#str_231375"	"Skip cutscenes automatically as soon as they start."
++	"#str_231376"	"Field of view for your weapon only. 0 follows the main Field of View."
++	"#str_231377"	"With a Weapon FOV set: Classic keeps the weapon looking the same on any screen shape; Direct uses the value as is."
++	"#str_231378"	"Moves your weapon left or right on screen."
++	"#str_231379"	"Moves your weapon forward or back."
++	"#str_231380"	"Moves your weapon up or down."
++	"#str_231381"	"Your weapon kicks back on screen when it fires. No holds it still."
++	"#str_231382"	"Play in virtual reality with a connected headset."
++	"#str_231383"	"Aim where your weapon-hand controller points, or where you look."
++	"#str_231384"	"Which hand holds the weapon. Left also moves you with the right stick."
++	"#str_231385"	"Turn in fixed steps (Snap) or smoothly with the stick."
++	"#str_231386"	"How many degrees each snap turn rotates you."
++	"#str_231387"	"Which way the stick walks you: where your head faces, or where your off-hand controller points."
++	"#str_231388"	"Your character follows you as you walk around your room. Disabled keeps it in place."
++	"#str_231389"	"Show where your shots land while aiming with the controller: a dot, or a dot and a laser beam."
++	"#str_231390"	"Controller vibration strength in VR."
++	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
++	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
++	"#str_231393"	"Crouch in your room to crouch in the game."
+ }
+diff --git a/content/baseoq4/pak0/strings/ukrainian_openq4.lang b/content/baseoq4/pak0/strings/ukrainian_openq4.lang
+index 7e3ba8c..ceace52 100644
+--- a/content/baseoq4/pak0/strings/ukrainian_openq4.lang
++++ b/content/baseoq4/pak0/strings/ukrainian_openq4.lang
+@@ -1379,4 +1379,89 @@
+ 	"#str_231306"	"Field of View"
+ 	"#str_231307"	"Button Prompts"
+ 	"#str_231308"	"Automatic;Xbox;PlayStation;Nintendo;Steam Deck;Generic"
++	"#str_231309"	"Highlight an option to see what it does."
++	"#str_231310"	"Yes: the mouse looks up and down. No: moving the mouse forward and back walks instead, unless you hold Mouse Look."
++	"#str_231311"	"Reload automatically when the magazine runs empty."
++	"#str_231312"	"Switch to a new weapon automatically when you pick it up."
++	"#str_231313"	"Yes: press zoom once to zoom in and again to zoom out. No: hold zoom to stay zoomed in."
++	"#str_231314"	"Look speed while zoomed or scoped, as a percent of normal. With 360 Controller Feel the stick uses 360 Zoomed Speed instead."
++	"#str_231315"	"How much of the world you see, measured at 4:3; wide screens add more at the sides. Higher sees more, lower looks closer."
++	"#str_231316"	"Show bullet holes, scorch marks and blood on walls and floors."
++	"#str_231317"	"Show your weapon on screen. No hides it for a clearer view."
++	"#str_231318"	"Where your weapon sits on screen: to the right, centered, or lower right."
++	"#str_231319"	"Multiplayer: how pickups look. The original models, simple icons, or flat colored icons with or without a light sweep."
++	"#str_231320"	"Multiplayer: draw the weapons other players hold in flat icon colors, so you can tell what they carry at a glance."
++	"#str_231321"	"Multiplayer: show every player with the bright pro skins, so opponents are easier to spot."
++	"#str_231322"	"Flip vertical mouse look: moving the mouse forward looks down."
++	"#str_231323"	"Blend this many mouse readings together. Higher is smoother but adds a little delay; 1 is off."
++	"#str_231324"	"How fast the view turns when you move the mouse."
++	"#str_231325"	"Your mouse's counts per inch (CPI/DPI), so sensitivity follows real hand movement. 0 keeps the classic sensitivity."
++	"#str_231326"	"Smooth the view by averaging this many recent view angles after the mouse moves. 0 is off."
++	"#str_231327"	"Mouse acceleration, Quake Live style: faster swipes turn farther. Negative values slow fast swipes instead. 0 is off."
++	"#str_231328"	"How fast the mouse must move before acceleration starts."
++	"#str_231329"	"Shape of the acceleration curve. 2 matches Quake Live; higher ramps up more sharply."
++	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
++	"#str_231331"	"Use a gamepad. No ignores all controllers."
++	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
++	"#str_231333"	"The Xbox 360 aim assist: stick turning slows while your crosshair is over an enemy, so it is easier to stay on target."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
++	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
++	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
++	"#str_231338"	"Southpaw swaps the sticks: move with the right stick and look with the left."
++	"#str_231339"	"Which button icons to show. Automatic matches the controller you are using."
++	"#str_231340"	"How far a stick must move before it counts. Raise it if the view drifts on its own."
++	"#str_231341"	"How fast the view turns with the look stick."
++	"#str_231342"	"How fast the stick moves the weapon wheel's selection."
++	"#str_231343"	"Moves the weapon wheel left or right. 0 centers it; 27 is the original position."
++	"#str_231344"	"Shapes the look stick's response. Higher makes small movements slower for fine aim, with full speed at the edge."
++	"#str_231345"	"Flip vertical stick look: pushing up looks down."
++	"#str_231346"	"How far a trigger must be pulled before it counts as pressed."
++	"#str_231347"	"Controller vibration when you fire, take damage and more."
++	"#str_231348"	"Vibration strength. 1 is normal; up to 2 is stronger."
++	"#str_231349"	"Aim by tilting a controller that has motion sensors, such as PlayStation and Switch Pro controllers."
++	"#str_231350"	"How far the view turns when you tilt the controller."
++	"#str_231351"	"What the controller's touchpad does: nothing, move the menu cursor, look around, or work only as a button."
++	"#str_231352"	"How fast touchpad movement moves the cursor or the view."
++	"#str_231353"	"Use a touchscreen like a mouse in menus and loading screens."
++	"#str_231354"	"Below this battery percent, vibration is turned down to save power. 0 turns this off."
++	"#str_231355"	"The strongest vibration allowed while the battery is below the Low Battery Rumble level."
++	"#str_231356"	"Weapon Default gives each weapon its own crosshair. Custom uses the crosshair you pick below for every weapon."
++	"#str_231357"	"Pick the custom crosshair."
++	"#str_231358"	"Size of the custom crosshair."
++	"#str_231359"	"Color of the custom crosshair."
++	"#str_231360"	"Flash a marker on the crosshair when your shots hit."
++	"#str_231361"	"HUD style: Classic (the original), Remastered (kept inside the safe area), Minimal (the essentials), or Competitive (multiplayer)."
++	"#str_231362"	"Size of the HUD, separate from the menus."
++	"#str_231363"	"How far the HUD spreads on wide screens: within 16:9, within 21:9, or the full width."
++	"#str_231364"	"Moves the HUD in from the screen edges, in percent of the screen, for TVs that crop the picture."
++	"#str_231365"	"Yes: the objectives button opens and closes your objectives. No: they show only while you hold it."
++	"#str_231366"	"How solid the Remastered HUD is. Lower lets more of the game show through."
++	"#str_231367"	"Show which direction damage is coming from."
++	"#str_231368"	"Show a message when you pick something up."
++	"#str_231369"	"Briefly show your weapon list when you switch weapons."
++	"#str_231370"	"Tone down flashes: limits hit indicators, dims full-screen white flashes and removes the death afterimage."
++	"#str_231371"	"Bodies sink into the floor before they disappear. Ragdoll keeps ragdoll physics while they sink; No Ragdoll turns it off."
++	"#str_231372"	"How long bodies stay before they disappear. Stock keeps the game's own timing."
++	"#str_231373"	"The language for text and speech."
++	"#str_231374"	"The keys that open the console: Tilde alone, or Ctrl+Alt+Tilde so it can't open by accident."
++	"#str_231375"	"Skip cutscenes automatically as soon as they start."
++	"#str_231376"	"Field of view for your weapon only. 0 follows the main Field of View."
++	"#str_231377"	"With a Weapon FOV set: Classic keeps the weapon looking the same on any screen shape; Direct uses the value as is."
++	"#str_231378"	"Moves your weapon left or right on screen."
++	"#str_231379"	"Moves your weapon forward or back."
++	"#str_231380"	"Moves your weapon up or down."
++	"#str_231381"	"Your weapon kicks back on screen when it fires. No holds it still."
++	"#str_231382"	"Play in virtual reality with a connected headset."
++	"#str_231383"	"Aim where your weapon-hand controller points, or where you look."
++	"#str_231384"	"Which hand holds the weapon. Left also moves you with the right stick."
++	"#str_231385"	"Turn in fixed steps (Snap) or smoothly with the stick."
++	"#str_231386"	"How many degrees each snap turn rotates you."
++	"#str_231387"	"Which way the stick walks you: where your head faces, or where your off-hand controller points."
++	"#str_231388"	"Your character follows you as you walk around your room. Disabled keeps it in place."
++	"#str_231389"	"Show where your shots land while aiming with the controller: a dot, or a dot and a laser beam."
++	"#str_231390"	"Controller vibration strength in VR."
++	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
++	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
++	"#str_231393"	"Crouch in your room to crouch in the game."
+ }
+-- 
+2.53.0.windows.1
+

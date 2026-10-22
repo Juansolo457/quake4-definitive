@@ -27,10 +27,12 @@ Not a recompilation. Not a full decompilation.
 | ✅ 360 aim assist (target cone + 50% friction) | patch 0001 |
 | ✅ Real controller found among virtual pads (ViGEm, Steam) | patch 0002 |
 | ✅ Settings menu rows for all of the above, plus Field of View and button prompt style | patches 0004–0005 |
+| ✅ Settings pages fully usable with a controller; help line explains each option | patches 0006–0007 |
+| ✅ Performance trace: frame times plus Windows GPU %/VRAM per level (`-PerfTrace`) | patch 0008 |
 | ✅ Graphics defaults: 4K, 240 fps cap, 4× MSAA + SMAA, 16× AF, soft shadows | `config/definitive.cfg` |
 | ✅ Uncompressed textures, hi-res packs load | `image_usePrecompressedTextures 2` |
 | ⏳ 360 in-world screen prompts, Legacy stick layouts, button presets | next |
-| ⏳ Aim-assist bullet bend, vehicle aim assist | more reverse engineering |
+| ⏳ Aim-assist bullet bend (in progress), vehicle aim assist | more reverse engineering |
 | ⏳ Linux | untested |
 
 Full debrief: [docs/PROGRESS.md](docs/PROGRESS.md).
@@ -48,6 +50,7 @@ Build with openQ4's `BUILDING.md` (Meson + Ninja + Visual Studio). Gotchas: [doc
 ```powershell
 pwsh tools/launch_definitive.ps1    # first launch applies the definitive defaults
 ```
+Add `-PerfTrace` to record a performance trace, then `python -I tools/perf_report.py` ([GRAPHICS.md](docs/GRAPHICS.md#gpu-usage-and-the-performance-trace)).
 
 ## Settings
 
@@ -96,7 +99,7 @@ The stock textures are 256–512 px. openQ4 normally draws the compressed copies
 patches/openq4/   openQ4 patches (git am, in order)
 config/           definitive.cfg
 docs/             findings, plan, progress
-tools/            launcher, XEX tools, settings-row tool, tests
+tools/            launcher, XEX tools, settings row/help tools, perf trace tools, tests
 ```
 
 ## Legal

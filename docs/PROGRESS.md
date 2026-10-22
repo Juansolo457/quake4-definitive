@@ -44,15 +44,18 @@ So this became a **"definitive edition"**: openQ4 + PC assets + the 360 controll
 - `in_joystickXenon 1` reproduces the whole pipeline. Tuning cvars: `in_xenonYawScale`, `in_xenonPitchScale`, `in_xenonZoomedSlow`, `in_xenonLookCurve`, `in_xenonSmoothing`.
 - Hands-on: zoomed aiming fixed (30% instead of openQ4's 50%); overall "8.5/10".
 
-### 6. Settings menu (patches 0004, 0005)
+### 6. Settings menu (patches 0004–0007)
 - Controller rows for everything above, plus Field of View (`g_fov`, now saved between sessions) and Button Prompts.
 - `tools/openq4_settings_rows.py` inserts rows and keeps the GUI layout, scroll table, settings registry and openQ4's coverage test in step. Also fixed an upstream hover misalignment.
 - Survey against a modern-shooter checklist: [CONTROLLER_UX.md](CONTROLLER_UX.md). Glyphs were already device-aware in openQ4's default HUD.
+- **Controller navigation on settings pages (0006):** the D-pad got stuck in each slider's number box. Fixed, along with row highlighting under controller focus, auto-scrolling the list and A as a click.
+- **Help line (0007):** a panel under the Game Options list explains the highlighted option (all 84 rows).
 
 ### 7. Graphics
 - Definitive defaults ([GRAPHICS.md](GRAPHICS.md), `config/definitive.cfg`): native 4K borderless, **240 fps cap**, adaptive vsync, **FOV 90**, 4× MSAA + SMAA, 16× AF, 2048 soft shadow maps, authored look. Applied once by `tools/launch_definitive.ps1`.
 - **Low-res textures:** the sources are 256–512 px, and openQ4 was drawing the stock DXT-compressed copies. Worse, those copies inside the PK4s always beat loose hi-res pack files. `image_usePrecompressedTextures 2` fixes both.
 - *HiRes Textures & Models* x2 packs (ModDB) installed and verified: all 822 pack-covered images on Air Defense 1 load at 2×. Level load goes from about 5 s to 16 s once cached (44 s on the first visit). Hands-on (Hangar 1): "looks way better with the texture pack".
+- **Performance trace (0008):** `launch_definitive.ps1 -PerfTrace` logs per-second frame and GPU timings in game plus Windows' GPU counters; `tools/perf_report.py` breaks GPU use down by level, menu and load. First finding: level loads with the hi-res packs push the GPU to 30–57%.
 
 ### 8. Fixes along the way
 - **Broken saves:** a shallow clone gave openQ4 build number 2, so every save failed validation. Fetching the full history (build 1686) fixed it.
@@ -63,10 +66,10 @@ So this became a **"definitive edition"**: openQ4 + PC assets + the 360 controll
 2. **v0.1 release** with a ready-to-run build, then outreach (PCGamingWiki text ready in [OUTREACH.md](OUTREACH.md)).
 3. **360 in-world screens:** "Interactive / Press Use / USE D-PAD" prompts and D-pad navigation.
 4. **Legacy stick layouts and 360 button presets.**
-5. **More recon:** aim-assist bullet bend (`pm_AimAssistBump`/`Threshold`), vehicle aim assist, 360 walk/run threshold.
+5. **More recon:** aim-assist bullet bend (`pm_AimAssistBump`/`Threshold`, in progress), vehicle aim assist, 360 walk/run threshold.
 6. **Linux:** build the patched openQ4 and test.
-7. **Upstream:** offer patches 0002 (multi-pad) and the hover fix to openQ4.
-8. **Performance:** later, if needed. Automated 4K benchmarks read a flat 60 fps (a window-visibility cap in openQ4), so measure in game with `com_showFPS 1`.
+7. **Upstream:** offer patches 0002 (multi-pad), 0006 (settings navigation) and the hover fix to openQ4.
+8. **Performance:** play a few levels with `-PerfTrace` and read the report before changing any defaults.
 
 ## Sister project
 `fear360-recomp` (F.E.A.R. + F.E.A.R. Files, Xbox 360): a true static recompilation is planned there, using what we learned here about XEX tooling.

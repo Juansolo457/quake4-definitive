@@ -1,0 +1,245 @@
+From e335c238eea17471a04a1d598600e0a03cb80593 Mon Sep 17 00:00:00 2001
+From: juansolo457 <5344231+Juansolo457@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 18:27:09 -0700
+Subject: [PATCH 8/8] Add com_perfTrace: a CSV performance trace
+
+com_perfTrace 1 writes perftrace/trace_<date>_<time>.csv in the save path: an
+interval row every com_perfTraceInterval ms (map, screen, fps, frame/game/
+frontend/backend times, the renderer's whole-frame GPU timestamps, scene size,
+com_maxfps, r_swapInterval), a hitch row for each frame of at least
+com_perfTraceHitchMsec, and a map row per level load. Rows carry unix_time so
+they can be joined with OS GPU counters sampled outside the game.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/framework/Common.cpp    |   3 +
+ src/framework/PerfTrace.cpp | 196 ++++++++++++++++++++++++++++++++++++
+ 2 files changed, 199 insertions(+)
+ create mode 100644 src/framework/PerfTrace.cpp
+
+diff --git a/src/framework/Common.cpp b/src/framework/Common.cpp
+index 0551ef3..7059c34 100644
+--- a/src/framework/Common.cpp
++++ b/src/framework/Common.cpp
+@@ -60,6 +60,7 @@ If you have questions concerning this license or the applicable additional terms
+ 
+ void openQ4_PrintFramePacingSnapshot( const char *reason );
+ void openQ4_RecordMultiplayerFramePacing( int frameStartMsec );
++void openQ4_PerfTraceFrame( void );
+ 
+ static const int OPENQ4_ENTITYDEF_MEDIA_CACHE_TOOL_MASK =
+ 	EDITOR_RADIANT |
+@@ -6052,6 +6053,8 @@ void idCommonLocal::Frame( void ) {
+ 			session->UpdateScreen( false );
+ 		}
+ 
++		openQ4_PerfTraceFrame();
++
+ 		// report timing information
+ 		if ( com_speeds.GetBool() ) {
+ 			static int	lastTime;
+diff --git a/src/framework/PerfTrace.cpp b/src/framework/PerfTrace.cpp
+new file mode 100644
+index 0000000..de50ed1
+--- /dev/null
++++ b/src/framework/PerfTrace.cpp
+@@ -0,0 +1,196 @@
++// GPL-3.0-or-later.
++//
++
++/*
++===============================================================================
++
++	Performance trace (com_perfTrace 1).
++
++	Writes perftrace/trace_<date>_<time>.csv in the save path while it is on:
++	an "interval" row every com_perfTraceInterval milliseconds, a "hitch" row
++	for each frame of at least com_perfTraceHitchMsec, and a "map" row when the
++	level changes (its frame time is the load). gpu_frame_ms is the renderer's
++	delayed whole-frame GPU timestamp pair (r_rendererGpuTimers); it spans the
++	buffer swap, so it includes any wait for presentation and is not GPU load.
++	Empty GPU columns mean no timestamps resolved. unix_time lets the rows be
++	joined with OS samples of GPU utilization taken outside the game.
++
++===============================================================================
++*/
++
++#include "../idlib/precompiled.h"
++#pragma hdrstop
++
++#include <chrono>
++#include <ctime>
++
++static idCVar com_perfTrace( "com_perfTrace", "0", CVAR_SYSTEM | CVAR_BOOL, "write a performance trace to perftrace/*.csv in the save path while 1" );
++static idCVar com_perfTraceInterval( "com_perfTraceInterval", "1000", CVAR_SYSTEM | CVAR_INTEGER, "milliseconds per com_perfTrace interval row", 100, 60000 );
++static idCVar com_perfTraceHitchMsec( "com_perfTraceHitchMsec", "50", CVAR_SYSTEM | CVAR_INTEGER, "frames at least this long get their own com_perfTrace hitch row; 0 = none", 0, 10000 );
++
++namespace {
++
++struct perfTraceSpan_t {
++	int		frames;
++	double	frameMsecSum;
++	double	frameMsecMax;
++	int		gameMsecSum;
++	int		frontEndMsecSum;
++	int		backEndMsecSum;
++	int		gpuSamples;
++	double	gpuMsecSum;
++	double	gpuMsecMax;
++	int		hitches;
++};
++
++idFile *				traceFile = NULL;
++double					traceStartTicks;
++double					lastFrameTicks;
++double					spanStartTicks;
++perfTraceSpan_t			span;
++unsigned long long		lastGpuSamples;
++int						lastGameFrameMsec;
++idStr					lastMap;
++
++double TicksToMsec( double ticks ) {
++	return ticks * 1000.0 / Sys_ClockTicksPerSecond();
++}
++
++const char *ScreenName( void ) {
++	if ( !session->IsGUIActive() ) {
++		return "game";
++	}
++	idUserInterface *gui = session->GetActiveGUI();
++	return gui != NULL ? gui->Name() : "menu";
++}
++
++void ResetSpan( double now ) {
++	memset( &span, 0, sizeof( span ) );
++	spanStartTicks = now;
++}
++
++void WriteRow( const char *kind, double now, const perfTraceSpan_t &s, double spanMsec ) {
++	renderPresentationState_t presentation;
++	renderSystem->GetPresentationState( presentation );
++	const double frames = Max( s.frames, 1 );
++	idStr gpuAvg, gpuMax;
++	if ( s.gpuSamples > 0 ) {
++		gpuAvg = va( "%.2f", s.gpuMsecSum / s.gpuSamples );
++		gpuMax = va( "%.2f", s.gpuMsecMax );
++	}
++	const double unixTime = std::chrono::duration<double>( std::chrono::system_clock::now().time_since_epoch() ).count();
++	traceFile->Printf( "%s,%.3f,%.2f,%s,%s,%d,%.1f,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%s,%d,%dx%d,%d,%d\n",
++		kind, unixTime, TicksToMsec( now - traceStartTicks ) / 1000.0, lastMap.Length() ? lastMap.c_str() : "-", ScreenName(),
++		s.frames, spanMsec > 0.0 ? s.frames * 1000.0 / spanMsec : 0.0,
++		s.frameMsecSum / frames, s.frameMsecMax, s.gameMsecSum / frames, s.frontEndMsecSum / frames, s.backEndMsecSum / frames,
++		gpuAvg.c_str(), gpuMax.c_str(), s.hitches,
++		presentation.sceneWidth, presentation.sceneHeight,
++		cvarSystem->GetCVarInteger( "com_maxfps" ), cvarSystem->GetCVarInteger( "r_swapInterval" ) );
++	traceFile->Flush();
++}
++
++void OpenTrace( void ) {
++	char name[ 64 ];
++	const time_t now = time( NULL );
++	const tm *local = localtime( &now );
++	if ( local == NULL || strftime( name, sizeof( name ), "perftrace/trace_%Y%m%d_%H%M%S.csv", local ) == 0 ) {
++		idStr::snPrintf( name, sizeof( name ), "perftrace/trace_%d.csv", Sys_Milliseconds() );
++	}
++	traceFile = fileSystem->OpenFileWrite( name );
++	if ( traceFile == NULL ) {
++		common->Warning( "com_perfTrace: could not open %s", name );
++		com_perfTrace.SetBool( false );
++		return;
++	}
++	traceFile->Printf( "kind,unix_time,time_s,map,screen,frames,fps,frame_ms_avg,frame_ms_max,game_ms_avg,frontend_ms_avg,backend_ms_avg,"
++		"gpu_frame_ms_avg,gpu_frame_ms_max,hitches,scene_res,com_maxfps,r_swapInterval\n" );
++	traceFile->Flush();
++	common->Printf( "com_perfTrace: writing %s\n", fileSystem->RelativePathToOSPath( name, "fs_savepath" ) );
++
++	renderGpuFrameTiming_t gpu;
++	renderSystem->GetGpuFrameTiming( gpu );
++	lastGpuSamples = gpu.resolvedSamples;
++	lastGameFrameMsec = time_gameFrame;
++	lastMap = session->GetCurrentMapName();
++	traceStartTicks = lastFrameTicks = Sys_GetClockTicks();
++	ResetSpan( traceStartTicks );
++}
++
++void CloseTrace( void ) {
++	fileSystem->CloseFile( traceFile );
++	traceFile = NULL;
++	common->Printf( "com_perfTrace: closed\n" );
++}
++
++}
++
++void openQ4_PerfTraceFrame( void ) {
++	if ( !com_perfTrace.GetBool() ) {
++		if ( traceFile != NULL ) {
++			CloseTrace();
++		}
++		return;
++	}
++	if ( renderSystem == NULL || session == NULL ) {
++		return;
++	}
++	if ( traceFile == NULL ) {
++		OpenTrace();
++		return;
++	}
++
++	const double now = Sys_GetClockTicks();
++	const double frameMsec = TicksToMsec( now - lastFrameTicks );
++	lastFrameTicks = now;
++
++	// time_gameFrame accumulates until com_speeds clears it.
++	const int gameMsec = time_gameFrame >= lastGameFrameMsec ? time_gameFrame - lastGameFrameMsec : time_gameFrame;
++	lastGameFrameMsec = time_gameFrame;
++
++	renderGpuFrameTiming_t gpu;
++	renderSystem->GetGpuFrameTiming( gpu );
++	const bool gpuSample = gpu.supported && gpu.valid && gpu.resolvedSamples != lastGpuSamples;
++	const double gpuMsec = gpuSample ? gpu.elapsedMicroseconds / 1000.0 : 0.0;
++	lastGpuSamples = gpu.resolvedSamples;
++
++	perfTraceSpan_t frame = {};
++	frame.frames = 1;
++	frame.frameMsecSum = frame.frameMsecMax = frameMsec;
++	frame.gameMsecSum = gameMsec;
++	frame.frontEndMsecSum = time_frontend;
++	frame.backEndMsecSum = time_backend;
++	frame.gpuSamples = gpuSample ? 1 : 0;
++	frame.gpuMsecSum = frame.gpuMsecMax = gpuMsec;
++
++	// A level loads inside one frame; that frame's time is the load.
++	const char *map = session->GetCurrentMapName();
++	if ( lastMap.Icmp( map != NULL ? map : "" ) != 0 ) {
++		lastMap = map != NULL ? map : "";
++		WriteRow( "map", now, frame, frameMsec );
++		ResetSpan( now );
++		return;
++	}
++
++	const int hitchMsec = com_perfTraceHitchMsec.GetInteger();
++	if ( hitchMsec > 0 && frameMsec >= hitchMsec ) {
++		frame.hitches = 1;
++		WriteRow( "hitch", now, frame, frameMsec );
++	}
++
++	++span.frames;
++	span.frameMsecSum += frameMsec;
++	span.frameMsecMax = Max( span.frameMsecMax, frameMsec );
++	span.gameMsecSum += gameMsec;
++	span.frontEndMsecSum += time_frontend;
++	span.backEndMsecSum += time_backend;
++	span.gpuSamples += frame.gpuSamples;
++	span.gpuMsecSum += gpuMsec;
++	span.gpuMsecMax = Max( span.gpuMsecMax, gpuMsec );
++	span.hitches += frame.hitches;
++
++	const double spanMsec = TicksToMsec( now - spanStartTicks );
++	if ( spanMsec >= com_perfTraceInterval.GetInteger() ) {
++		WriteRow( "interval", now, span, spanMsec );
++		ResetSpan( now );
++	}
++}
+-- 
+2.53.0.windows.1
+

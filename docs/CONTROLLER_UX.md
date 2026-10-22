@@ -41,9 +41,9 @@ Surveyed 2026-10-21 against openQ4 `cbe967f` plus our patches 0001–0004 and th
 | Toggle zoom / crouch / sprint | ✔ | zoom in menu; `in_toggleCrouch`, `in_alwaysRun` cvars | ✔ | **gap:** crouch and run toggles not in menu |
 | World FOV | ✔ | `g_fov` 90 (4:3 basis, Hor+ on wide screens) | fixed | done: Gameplay And View > Field of View 70–130, now archived (patch 0005) |
 | Weapon FOV | ✔ | ✔ `cl_gunfov` | n/a | done |
-| Option descriptions | ✔ | hover highlight only | ✔ | **gap** |
+| Option descriptions | ✔ | hover highlight only | ✔ | done for Game Options: help line under the list (patch 0007) |
 | Grey out rows that don't apply | ✔ | n/a | n/a | **gap:** in 360 mode, openQ4's dead zone, curve and look sensitivity rows do nothing |
-| Controller-navigable menus | ✔ | ✔ | ✔ | done |
+| Controller-navigable menus | ✔ | ✔, except settings pages | ✔ | done: settings pages fixed (patch 0006) |
 | Weapon wheel | ✔ | ✔ (openQ4 feature) | no (cycle/D-pad) | done |
 
 ## Added in patch 0004 (Settings > Game Options > Controller, after "Controller Input")
@@ -65,6 +65,21 @@ Every row below moved down 144 px. The content height (2066 → 2210), section j
 - **Gameplay And View > Field of View** (`g_fov`, slider 70–130, step 1). `g_fov` is now `PC_CVAR_ARCHIVE | CVAR_NOCHEAT`, range 1–179, declared identically in the SP and MP modules. Before this, SP didn't archive it, so it reset to 90 every launch. Map scripts still apply their FOV as an offset (`openq4_scriptFovOffset`), and MP still clamps to 90–175.
 - **Controller > Button Prompts** (`in_promptStyle`: Automatic, Xbox, PlayStation, Nintendo, Steam Deck, Generic).
 - Rows were inserted with `tools/openq4_settings_rows.py` and the specs in `tools/settings_specs/`. The tool moves rows and hovers, section jumps, scroll range and thresholds, registry, strings and test expectations together. Coverage test passes; static layout check: 89 rows, no overlaps, 84 hovers aligned. Aim-assist smoke test still passes.
+
+## Settings pages with a controller (patch 0006)
+Reported: A and B worked, but the D-pad and stick did nothing on Settings > Game Options. The cause: each slider row also has a number box for typing the value. Moving down from a slider put focus in that box, and a text box takes every arrow key, so navigation got stuck at the first slider. Moving up or down over a slider also nudged its value. And because a row's highlight comes from a separate hover window that only the mouse reached, nothing on screen showed where focus was.
+
+Fixed in openQ4's classic GUI code (`src/ui/Window.cpp`):
+- Number boxes paired with a slider, and list scrollbars, are skipped.
+- A direction goes to the focused control only if the control uses it: choices and sliders take left/right, lists take up/down. Every other direction moves focus. Edit boxes keep left/right, plus up/down only for wrapped text.
+- **A** works like a click: on a choice it steps to the next value.
+- Controller focus lights the row and plays the hover sound, as the mouse does.
+- Focus moving off the visible part of the list scrolls it, by the smallest step that shows the whole row (`scrollIntoView`, handled in `Session_menu.cpp` with each page's scroll table).
+
+Covered by openQ4's `tools/tests/menu_controller_navigation.py` (extended). **Not verified:** a hands-on pass with a controller.
+
+## Help line (patch 0007)
+A panel under the Game Options list says what the highlighted option does, for the mouse and for controller focus. All 84 rows have text, and a default hint shows when no row is highlighted. The strings live in `tools/settings_specs/help.json`. `tools/openq4_settings_help.py` adds the panel, wires each row's hover window and writes the strings to every `*_openq4.lang` table. Run it again after adding rows; rows already wired are skipped. Checked on screen: the longest text wraps to three lines and fits.
 
 ## Graphics: the "Quake 4 Tweaker" mod
 [Quake 4 Tweaker](https://community.pcgamingwiki.com/files/file/1009-quake-4-tweaker/) (PCGamingWiki) is a `dinput.dll` proxy for the stock `Quake4.exe`. It forces an FPS cap above 60, high image quality (fixing texture bugs on modern GPUs), corpse time, FOV, intro skipping and custom resolutions. openQ4 covers all of these natively (`com_maxfps`, performance presets and image settings, Corpse Time, Field of View, `g_autoSkipCinematics`, custom resolutions), and a DLL injected into the stock exe doesn't apply to openQ4's executable. **Follow-up:** pick definitive-edition graphics defaults from openQ4's options (presets, MSAA/SMAA/TAA, shadow maps, screen-space lighting, texture quality), since stock out-of-the-box settings are bare.

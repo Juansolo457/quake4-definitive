@@ -1,10 +1,13 @@
 # Launch openQ4 as the Quake 4 Definitive Edition.
 # The first launch with a profile applies config/definitive.cfg; later launches keep
 # whatever the player changed in the settings menu.
+# -PerfTrace records a performance trace (com_perfTrace) and Windows' GPU counters
+# into <profile>/baseoq4/perftrace; summarize them with tools/perf_report.py.
 #
-#   pwsh tools/launch_definitive.ps1 [-Reapply] [-- extra +set/+map arguments]
+#   pwsh tools/launch_definitive.ps1 [-Reapply] [-PerfTrace] [-- extra +set/+map arguments]
 param(
     [switch]$Reapply,
+    [switch]$PerfTrace,
     [Parameter(ValueFromRemainingArguments = $true)][string[]]$Extra
 )
 
@@ -27,6 +30,13 @@ if ($Reapply -or -not (Test-Path $marker)) {
     $launch += @('+exec', 'definitive.cfg')
     Set-Content -Path $marker -Value "definitive.cfg applied $(Get-Date -Format s)"
 }
+if ($PerfTrace) { $launch += @('+set', 'com_perfTrace', '1') }
 if ($Extra) { $launch += $Extra }
 
-Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -ArgumentList $launch
+$game = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -ArgumentList $launch -PassThru
+if ($PerfTrace) {
+    $out = Join-Path $gameDir ("perftrace\gpu_{0:yyyyMMdd_HHmmss}.csv" -f (Get-Date))
+    $shell = (Get-Process -Id $PID).Path
+    Start-Process -FilePath $shell -WindowStyle Hidden -ArgumentList @('-NoProfile', '-File', "`"$PSScriptRoot\perf_sampler.ps1`"", '-ProcessId', $game.Id, '-Out', "`"$out`"")
+    Write-Host "Performance trace on: $(Join-Path $gameDir 'perftrace')"
+}
