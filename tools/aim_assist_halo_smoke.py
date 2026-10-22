@@ -104,7 +104,12 @@ def main():
     commands.extend(["openq4_testInput 0", "waitMsec 800"])
     # still strafing when measured: the grunt slides across the view
     check("weapon_machinegun strafe", 0, ["openq4_testInput 600 right 127", "waitMsec 250"])
-    commands.extend(["openq4_testInput 0", "testWeaponScope weapon_hyperblaster", "waitMsec 1500"])
+    # the friction lets go over about pm_AimAssistFrictionRelease (0.15 s) after the aim leaves the
+    # target: still partly held 50 ms later, gone 400 ms later
+    commands.extend(["openq4_testInput 0", "waitMsec 500", f"setviewpos {eye} {yaw:.2f}", "waitMsec 300",
+                     f"setviewpos {eye} {yaw + OFFSETS[-1]:.2f}", "waitMsec 50", "echo HALO_CASE release early", "testMuzzleAim",
+                     "waitMsec 350", "echo HALO_CASE release late", "testMuzzleAim"])
+    commands.extend(["testWeaponScope weapon_hyperblaster", "waitMsec 1500"])
     check("weapon_hyperblaster 9", 9)
     commands.extend(["testWeaponScope weapon_machinegun", "waitMsec 1500", "set pm_AimAssist 2"])
     check("mode2 weapon_machinegun 9", 9)
@@ -134,7 +139,7 @@ def main():
               f"{fmt(adhesion, '%.1f'):>7} {fmt(bent, '%.2f'):>6}  {note}")
 
     problems = []
-    expected_cases = len(TUNED) * len(OFFSETS) + len(ZOOM_OFFSETS) + 1 + 1 + 1
+    expected_cases = len(TUNED) * len(OFFSETS) + len(ZOOM_OFFSETS) + 1 + 2 + 1 + 1
     if len(rows) != expected_cases:
         problems.append(f"{len(rows)} of {expected_cases} cases ran")
     for weapon in TUNED:
@@ -160,6 +165,9 @@ def main():
     strafe = rows.get("weapon_machinegun strafe")
     if not strafe or not strafe[3] or abs(strafe[3]) < 1.0:
         problems.append("strafe: no adhesion")
+    early, late = rows.get("release early"), rows.get("release late")
+    if not early or not late or early[2] is None or late[2] is None or not 40 < early[2] < 100 or late[2] < 99:
+        problems.append("friction release: not eased (partly held at 50 ms, gone at 400 ms)")
     if "joint" not in found.get("weapon_hyperblaster 9", ""):
         problems.append("hyperblaster in mode 3: no 360 joint bend")
     if "joint" not in found.get("mode2 weapon_machinegun 9", "") or "(Halo)" in found.get("mode2 weapon_machinegun 9", ""):

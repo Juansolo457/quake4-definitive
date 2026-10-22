@@ -118,7 +118,7 @@ Zoomed, the machinegun's cones shrink (6° off: magnetism 0.84, no autoaim). Str
 - **The follow.** Adhesion copies the target's angular velocity, so a sudden change in its speed or yours (a leap, a landing, a new target) could yank the view for a moment, at up to about 125°/s. It now eases toward the new value (`pm_AimAssistAdhesionTime`).
 - **The friction's release.** Turning away hard could leave the cone in a split second and snap the stick from 40% back to full speed. Friction still engages at once, but now takes about 0.15 s to let go (`pm_AimAssistFrictionRelease`).
 
-With `pm_showAimAssist 1`, any follow faster than 45°/s logs the target, its distance, the rate asked for and applied, and both speeds, so a repeat can be traced. The smoothing hasn't been through the smoke test or a play test yet.
+With `pm_showAimAssist 1`, any follow faster than 45°/s logs the target, its distance, the rate asked for and applied, and both speeds, so a repeat can be traced. The smoke test now also checks the release: 50 ms after the view leaves the grunt the stick runs at 83%, and by 400 ms at 100%. It passes, and the other cases are unchanged (the strafe's follow is 21.1°/s). Not replayed yet.
 
 ## Known gaps (need the 360 disc)
 
