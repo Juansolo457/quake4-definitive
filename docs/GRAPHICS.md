@@ -48,7 +48,9 @@ Note: choosing a Performance Preset or "Recommended" in the menu (`applyPerforma
 - `game/airdefense1` with `listImages`:
   - **mode 1:** 475 of 478 pack-covered textures loaded at **stock size as DXT1**. The pack is ignored. (This is why a ModDB commenter saw "no difference" with openQ4.)
   - **mode 2:** **478 of 478 loaded at the pack's 2× size, uncompressed RGBA8**.
-- *models x2* (`models.1.zip`, 5.4 GB): being downloaded and tested next.
+- *models x2* (`models.1.zip`, MD5 `10d3112f7694f7bf4db11c135619c798`, the 2026-08-21 fixed upload): 2,887 `.tga` model textures, 14.2 GiB, with no executables or configs. The archive nests everything under an extra `models/` folder (`models/models/...`). Install it so the files land at `baseoq4/models/...`.
+- **Both packs, mode 2, `game/airdefense1`:** all **822 pack-covered images** (478 world + 344 model) loaded at the pack's size, none at stock size.
+- **Load time** for `game/airdefense1` (24 GB GPU, NVMe): about 5 s stock. With both packs, **44 s** on the first visit (building openQ4's binary image cache) and **16 s** after that. The largest single image is the Dark Matter Gun glow map, 85 MB uncompressed.
 
 ModDB limits each connection to about 1.2 MB/s. Splitting the download into ranged requests across its mirrors (7 connections) gave about 7.6 MB/s.
 
