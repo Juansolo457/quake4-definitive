@@ -1,84 +1,116 @@
 # Quake 4 Definitive Edition
 
-An unofficial project that brings the **Xbox 360 version's controller feel** to the PC version of Quake 4, running natively on modern Windows (and, via openQ4, Linux), with modern controller settings and clean high-resolution graphics.
+PC Quake 4. Xbox 360 controller feel. Modern settings. Native, sharp, fast.
 
-> **No game data is included.** You need your own copy of Quake 4 for PC (Steam or GOG). Nothing here contains code, assets or binaries from id Software, Raven Software or Activision beyond what openQ4 already publishes.
+> Unofficial. **No game data included.** Bring your own Quake 4 for PC (Steam or GOG).
 
-## What this is (and isn't)
+## Why
 
-| Approach | Used here? |
-|---|---|
-| **Static recompilation** (translating the 360 executable to native code, like UnleashedRecomp or Lost Odyssey Recomp) | **No.** Planned for the sister project, F.E.A.R. 360 |
-| **Full decompilation** (rebuilding source from the binary, like the Halo CE / OpenCE decomp) | **No** |
-| **Source-port patches + targeted reverse engineering** | **Yes** |
+Nostalgia. I played Quake 4 on the 360 and always wanted this mod: the PC version, but aiming like the 360. Tools like Claude Code finally make that doable for one person.
 
-The PC version already runs natively through [openQ4](https://github.com/themuffinator/openQ4), an open-source Quake 4 engine built from the GPL Doom 3 engine and Raven's Quake 4 SDK. The 360 game logic is the same game. What made the 360 version feel different was its **controller tuning**, which never shipped on PC. So this project:
+I'll keep tuning it until it feels right. **The controller tuning is human-tested.** I play every change and decide what feels right. Claude does the digging and the code; it doesn't get the final say on feel.
 
-1. reverse-engineers the specific 360 routines (stick processing, look curve, smoothing, aim-assist friction, triggers) by disassembling the 360 `default.xex`,
-2. re-implements that behaviour in openQ4 as patches, behind settings you can switch on and off, and
-3. adds the controller and graphics options a modern shooter is expected to have.
+## What it is
+
+Not a recompilation. Not a full decompilation.
+
+- **Base:** [openQ4](https://github.com/themuffinator/openQ4), the open-source Quake 4 engine. It runs the PC game natively.
+- **Added:** the 360's stick handling, reverse-engineered from the 360 executable and re-written as openQ4 patches.
+- **Why not recompile:** the PC version is the same game, and the 360 textures were *lower* resolution. Only the controls were worth taking.
+- The sister project, F.E.A.R. 360, will be a full static recompilation.
 
 ## Status
 
-| Milestone | State |
+| | |
 |---|---|
-| openQ4 builds and runs natively on Windows against Steam data | ✅ |
-| 360 aim assist (target cone + friction), restored from the SDK's `_XENON` code | ✅ patch 0001 |
-| Multiple Xbox-type pads: follows the one you actually use (virtual ViGEm/Steam pads no longer steal input) | ✅ patch 0002 |
-| **360 controller feel**: square stick gate, per-axis XInput dead zones, 3-segment look curve, look smoothing, 360 turn speeds, 30% zoomed speed, 360 trigger threshold | ✅ patch 0003, hands-on rating "8.5/10", still being tuned |
-| Settings menu: 360 Controller Feel, Aim Assist, Aim Assist Friction, Horizontal/Vertical/Zoomed speed | ✅ patch 0004 |
-| Settings menu: Field of View (now saved), Button Prompts (Xbox/PlayStation/Nintendo/Steam Deck) | ✅ patch 0005 |
-| Definitive graphics defaults (4K, 240 fps cap, 4× MSAA + SMAA, 16× AF, soft shadow maps) | ✅ `config/definitive.cfg` |
-| Uncompressed textures plus support for hi-res texture packs | ✅ setting found and applied; pack install in progress |
-| 360 in-world screen prompts / D-pad navigation, Legacy stick layouts, button presets | ⏳ next |
-| Aim-assist "bullet bend" and vehicle aim assist (in the 360 binary, not in the SDK) | ⏳ needs more reverse engineering |
-| Linux build and test | ⏳ untested (openQ4 supports Linux, but these patches haven't been built there yet) |
+| ✅ 360 controller feel: square stick gate, XInput dead zones (7849 / 8689), 3-step look curve, smoothing, 360 turn speeds, 30% zoomed speed | patch 0003 · tuning ongoing |
+| ✅ 360 aim assist (target cone + 50% friction) | patch 0001 |
+| ✅ Real controller found among virtual pads (ViGEm, Steam) | patch 0002 |
+| ✅ Settings menu rows for all of the above, plus Field of View and button prompt style | patches 0004–0005 |
+| ✅ Graphics defaults: 4K, 240 fps cap, 4× MSAA + SMAA, 16× AF, soft shadows | `config/definitive.cfg` |
+| ✅ Uncompressed textures, hi-res packs load | `image_usePrecompressedTextures 2` |
+| ⏳ 360 in-world screen prompts, Legacy stick layouts, button presets | next |
+| ⏳ Aim-assist bullet bend, vehicle aim assist | more reverse engineering |
+| ⏳ Linux | untested |
 
-The full debrief is in [docs/PROGRESS.md](docs/PROGRESS.md).
+Full debrief: [docs/PROGRESS.md](docs/PROGRESS.md).
 
-## Getting started (Windows)
+## Install (Windows)
 
-1. Install Quake 4 from Steam or GOG.
-2. Build openQ4 with the patches:
-   ```powershell
-   git clone https://github.com/themuffinator/openQ4 reference/openQ4
-   cd reference/openQ4
-   git checkout cbe967f            # the commit the patches are made against
-   git am ../../patches/openq4/*.patch
-   ```
-   Then follow openQ4's `BUILDING.md` (Meson + Ninja, Visual Studio). [docs/PC_BASELINE.md](docs/PC_BASELINE.md) has the exact recipe and the Windows gotchas we hit.
-3. Launch with the definitive defaults (applied on first launch only; your menu changes stick afterwards):
-   ```powershell
-   pwsh tools/launch_definitive.ps1
-   ```
-
-### Controller settings
-**Settings > Game Options > Controller**: *360 Controller Feel*, *Aim Assist*, *Aim Assist Friction*, *360 Horizontal Speed*, *360 Vertical Speed*, *360 Zoomed Speed*, *Button Prompts*. The console names are in [docs/X360_CONTROLS.md](docs/X360_CONTROLS.md) and [docs/AIM_ASSIST.md](docs/AIM_ASSIST.md).
-
-### Hi-res textures (optional)
-Quake 4's textures are mostly 256–512 px. [docs/GRAPHICS.md](docs/GRAPHICS.md) explains the `image_usePrecompressedTextures 2` setting that lets loose hi-res packs (such as *Quake 4: HiRes Textures & Models* on ModDB) actually load in openQ4, and where to install them.
-
-## How the 360 behaviour was recovered
-The 360 `default.xex` is decrypted and decompressed with XenonRecomp's loader (`tools/xexdump`). Cvar defaults are read straight from its static `idCVar` objects (`tools/x360_cvars.py`, 813 cvars), and the relevant functions are disassembled with constants resolved (`tools/ppc_func.py`). Findings, with addresses, are in [docs/X360_CONTROLS.md](docs/X360_CONTROLS.md). These tools need your own 360 copy; the outputs stay local (`game/` is gitignored).
-
-## Repository layout
+```powershell
+git clone https://github.com/themuffinator/openQ4 reference/openQ4
+cd reference/openQ4
+git checkout cbe967f
+git am ../../patches/openq4/*.patch
 ```
-patches/openq4/   openQ4 patches (apply in order with git am)
-config/           definitive.cfg (graphics + controller defaults)
-docs/             findings, plans, progress, guides
-tools/            launcher, XEX analysis, settings-menu row tool, smoke tests
+Build with openQ4's `BUILDING.md` (Meson + Ninja + Visual Studio). Gotchas: [docs/PC_BASELINE.md](docs/PC_BASELINE.md).
+
+```powershell
+pwsh tools/launch_definitive.ps1    # first launch applies the definitive defaults
+```
+
+## Settings
+
+**Settings > Game Options > Controller:**
+
+| Row | Cvar |
+|---|---|
+| 360 Controller Feel | `in_joystickXenon` |
+| Aim Assist | `pm_AimAssist` |
+| Aim Assist Friction | `pm_AimAssistSlow` (lower = stickier) |
+| 360 Horizontal / Vertical Speed | `in_xenonYawScale` / `in_xenonPitchScale` (360 range 0.006–0.06) |
+| 360 Zoomed Speed | `in_xenonZoomedSlow` |
+| Button Prompts | `in_promptStyle` |
+
+Console only: `in_xenonLookCurve 0/1` and `in_xenonSmoothing 0/1`, for comparing.
+
+## How the 360 controls were recovered
+
+All of this runs on **your own** 360 copy. Outputs stay local (`game/` is gitignored).
+
+1. **Dump** your disc ([docs/RIPPING.md](docs/RIPPING.md)) to get `default.xex`.
+2. **Read the headers:** `tools/xex_info.py` shows it's AES-encrypted, LZX-compressed, XDK 2.0.2099, and imports only `xam`/`xboxkrnl`.
+3. **Unpack:** `tools/xexdump` uses XenonRecomp's loader to write the decrypted image (base `0x82000000`), its sections and its import thunks.
+4. **Recover the cvars:** static `idCVar` objects sit in `.data` (vtable `0x8205FF18`, then name/default/description/flags). `tools/x360_cvars.py` reads all **813** of them. Finds: `m_yaw` 0.0253 and `m_pitch` 0.0209 are "stick scale", `pm_zoomedSlow` 30, vehicle aim assist.
+5. **Find the input code:** `XamInputGetState` import ← `XInputGetState` wrapper (`0x82854560`) ← pad poll loop (`0x822B6180`).
+6. **Disassemble** with `tools/ppc_func.py`, which resolves constants:
+   - `0x822B6030`: circle → square. Stick length ÷ larger axis, clamp ±32767.
+   - `0x822B5F68`: **dead zone**. `li r11,0x1EA9` (7849, left stick) / `0x21F1` (8689, right). Each axis on its own, then `(v − dz) / (32767 − dz) × 127`.
+   - `0x822B63F0`: triggers. `cmplwi r8,0x40`, so pressed above 64/255.
+7. **Find the look code:** trace reads of the `m_yaw` cvar to `JoystickMove` (`0x821C9AA8`):
+   - curve (`0x821C9A08`): ×0.3 below 25%, ×0.6 to 75%, ×2.5 above
+   - smoothing: `(previous + new) × 0.5`
+   - turning: `m_yaw × 127` per 60 Hz tic, about 193°/s at full stick
+8. **Port** it to openQ4 C++ behind a cvar (patch 0003), then add menu rows (patch 0004).
+9. **Test:** an automated smoke test for aim assist (`tools/aim_assist_smoke.py`), then **human play-testing** for feel.
+
+Addresses and details: [docs/X360_CONTROLS.md](docs/X360_CONTROLS.md).
+
+## Hi-res textures (optional)
+
+The stock textures are 256–512 px. openQ4 normally draws the compressed copies, and those block loose hi-res packs from loading. The definitive config sets `image_usePrecompressedTextures 2` to fix both. Recommended pack: *Quake 4: HiRes Textures & Models* (wachhabender, ModDB). Extract it into `Quake 4\baseoq4\`. Details: [docs/GRAPHICS.md](docs/GRAPHICS.md).
+
+## Layout
+
+```
+patches/openq4/   openQ4 patches (git am, in order)
+config/           definitive.cfg
+docs/             findings, plan, progress
+tools/            launcher, XEX tools, settings-row tool, tests
 ```
 
 ## Legal
-- Bring your own game. No assets, executables or proprietary code are distributed.
-- The patches modify openQ4 and inherit its licensing: GPLv3 for engine files, and the Quake 4 SDK EULA for `src/game`/`src/mpgame` (as openQ4 publishes them).
-- Everything else here (tools, docs, config) is MIT licensed; see [LICENSE](LICENSE) and [NOTICE](NOTICE).
-- Quake 4 is a trademark of ZeniMax Media / id Software. This project isn't affiliated with or endorsed by id Software, Raven Software, Bethesda, ZeniMax, Activision or Microsoft.
+
+- No assets, executables or proprietary code are distributed.
+- The patches follow openQ4's licences: GPLv3 for the engine, the Quake 4 SDK EULA for `src/game` and `src/mpgame`.
+- Our tools, docs and config are MIT ([LICENSE](LICENSE), [NOTICE](NOTICE)).
+- Quake 4 is a trademark of ZeniMax Media / id Software. Not affiliated with id, Raven, Bethesda, ZeniMax, Activision or Microsoft.
 
 ## Credits
-- **id Software and Raven Software**: Quake 4, the Doom 3 GPL source and the Quake 4 SDK
-- **themuffinator and DarkMatter Productions**: [openQ4](https://github.com/themuffinator/openQ4), the engine this builds on
-- **hedge-dev**: [XenonRecomp](https://github.com/hedge-dev/XenonRecomp) (its XEX loader powers `xexdump`)
-- Inspiration and patterns: [UnleashedRecomp](https://github.com/hedge-dev/UnleashedRecomp), [Lost Odyssey Recomp](https://github.com/freefrank/LostOdysseyRecomp), [OpenCE](https://github.com/OpenCommunityEdition/OpenCE)
-- **wachhabender**: *Quake 4: HiRes Textures & Models* (recommended texture pack; download separately)
-- Built with [Claude Code](https://claude.com/claude-code)
+
+- id Software and Raven Software: Quake 4, the Doom 3 GPL source, the Quake 4 SDK
+- themuffinator and DarkMatter Productions: [openQ4](https://github.com/themuffinator/openQ4)
+- hedge-dev: [XenonRecomp](https://github.com/hedge-dev/XenonRecomp) (XEX loader)
+- Inspiration: [UnleashedRecomp](https://github.com/hedge-dev/UnleashedRecomp), [Lost Odyssey Recomp](https://github.com/freefrank/LostOdysseyRecomp), [OpenCE](https://github.com/OpenCommunityEdition/OpenCE)
+- wachhabender: *Quake 4: HiRes Textures & Models*
+- Built with [Claude Code](https://claude.com/claude-code). Tuned by a human.
