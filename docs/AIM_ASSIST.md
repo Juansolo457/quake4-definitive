@@ -95,6 +95,8 @@ The 360 assist's friction applies only on the target and stops when zoomed. Halo
 | `pm_AimAssistHaloScale` | 1 | Scales Halo's autoaim and magnetism angles |
 | `pm_AimAssistFriction` | 0.6 | How much the look stick slows at full magnetism |
 | `pm_AimAssistAdhesion` | 0.7 | How much of the target's motion the view follows at full magnetism |
+| `pm_AimAssistAdhesionTime` | 0.1 | Seconds (time constant) over which the follow smooths speed changes; 0 is Halo's instant follow (patch 0015) |
+| `pm_AimAssistFrictionRelease` | 0.15 | About how many seconds friction takes to let go when the aim leaves a target; 0 is Halo's instant release (patch 0015) |
 | `pm_joystickAdhesionYaw` / `Pitch` | (runtime) | Bridge: degrees per second the view follows now |
 
 `testMuzzleAim` also prints the weapon, both levels, the adhesion and the friction.
@@ -110,7 +112,13 @@ The 360 assist's friction applies only on the target and stops when zoomed. Halo
 | 15° | 0 / 0.08 | none | as machinegun |
 | 18°+ | none | none | none |
 
-Zoomed, the machinegun's cones shrink (6° off: magnetism 0.84, no autoaim). Strafing past the grunt, the view follows at 21.6°/s. The hyperblaster in mode 3 and the machinegun in mode 2 still bend 4.1° to a joint, as before. **Not verified yet:** the feel in play with a controller.
+Zoomed, the machinegun's cones shrink (6° off: magnetism 0.84, no autoaim). Strafing past the grunt, the view follows at 21.6°/s. The hyperblaster in mode 3 and the machinegun in mode 2 still bend 4.1° to a joint, as before.
+
+**Hands-on (2026-10-21), patch 0015.** The machinegun "felt really good". Once, while turning away from a moving enemy toward the top right, the view lurched a little in the direction the stick was pushing. The two likely causes are now smoothed:
+- **The follow.** Adhesion copies the target's angular velocity, so a sudden change in its speed or yours (a leap, a landing, a new target) could yank the view for a moment, at up to about 125°/s. It now eases toward the new value (`pm_AimAssistAdhesionTime`).
+- **The friction's release.** Turning away hard could leave the cone in a split second and snap the stick from 40% back to full speed. Friction still engages at once, but now takes about 0.15 s to let go (`pm_AimAssistFrictionRelease`).
+
+With `pm_showAimAssist 1`, any follow faster than 45°/s logs the target, its distance, the rate asked for and applied, and both speeds, so a repeat can be traced. The smoothing hasn't been through the smoke test or a play test yet.
 
 ## Known gaps (need the 360 disc)
 

@@ -26,7 +26,7 @@ Not a recompilation. Not a full decompilation.
 | ✅ 360 controller feel: square stick gate, XInput dead zones (7849 / 8689), 3-step look curve, smoothing, 360 turn speeds, 30% zoomed speed | patch 0003 · tuning ongoing |
 | ✅ 360 aim assist (target cone + 50% friction) | patch 0001 |
 | ✅ 360 bullet bend: shots aim at the enemy body part nearest the crosshair (controller only), plus a Wide mode | patches 0009–0011 |
-| ✅ Full (Wide) on Halo CE's aim assist: falloff, partial capped bend, sticky aim that follows moving targets (blaster, machinegun, shotgun so far) | patch 0014 · not yet played |
+| ✅ Full (Wide) on Halo CE's aim assist: falloff, partial capped bend, sticky aim that follows moving targets (blaster, machinegun, shotgun so far) | patches 0014–0015 · tuning ongoing |
 | ✅ Real controller found among virtual pads (ViGEm, Steam) | patch 0002 |
 | ✅ Settings menu rows for all of the above, plus Field of View and button prompt style | patches 0004–0005 |
 | ✅ Settings pages fully usable with a controller (focus outline, LB/RB tabs, LT/RT scroll); help line explains each option | patches 0006–0007, 0013 |

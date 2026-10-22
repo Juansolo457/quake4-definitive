@@ -1,0 +1,145 @@
+From e1a6ce9fff95fb587d43a73a10e0743e63a31859 Mon Sep 17 00:00:00 2001
+From: juansolo457 <5344231+Juansolo457@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 21:06:20 -0700
+Subject: [PATCH] Aim assist: smooth Halo adhesion, ease the friction's release
+
+Hands-on, the Halo-style Full (Wide) felt good, but once the view lurched
+toward where the stick was pushing while turning away from a moving enemy.
+Two likely causes, both smoothed now:
+
+- Adhesion copies the target's angular velocity, so a sudden change in its
+  speed or the player's (a leap, a landing, a new target) jumped the view.
+  It now eases toward the new value with pm_AimAssistAdhesionTime (0.1 s
+  time constant).
+- Friction let go as fast as the aim left the cone, so pulling away hard
+  snapped the stick from 40% to full speed. Its release now takes about
+  pm_AimAssistFrictionRelease (0.15 s); it still engages at once.
+
+With pm_showAimAssist 1, a follow faster than 45 degrees a second logs the
+target, its distance, the asked and applied rates, and both speeds.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/game/Player.cpp          | 48 +++++++++++++++++++++++++++++++++---
+ src/game/Player.h            |  3 +++
+ src/game/gamesys/SysCvar.cpp |  2 ++
+ src/game/gamesys/SysCvar.h   |  2 ++
+ 4 files changed, 51 insertions(+), 4 deletions(-)
+
+diff --git a/src/game/Player.cpp b/src/game/Player.cpp
+index 9cd82ea..6b32159 100644
+--- a/src/game/Player.cpp
++++ b/src/game/Player.cpp
+@@ -1257,6 +1257,9 @@ idPlayer::idPlayer() {
+ 	aimAssistDeviation		= 0.0f;
+ 	aimAssistPoint.Zero();
+ 	aimAssistAngularVelocity.Zero();
++	aimAssistFriction		= 0.0f;
++	aimAssistAdhesion.Zero();
++	aimAssistLogTime		= 0;
+ 
+ 	doInitWeapon			= false;
+ 	noclip					= false;
+@@ -7449,6 +7452,21 @@ static void Player_SetJoystickMagnetism( int percent, float adhesionYaw, float a
+ 	cvarSystem->SetCVarFloat( "pm_joystickAdhesionPitch", adhesionPitch );
+ }
+ 
++/*
++================
++Player_SmoothingStep
++
++openQ4: the fraction of the way a value smoothed with time constant seconds moves toward its
++target in one frame (all of it when the time constant is 0).
++================
++*/
++static float Player_SmoothingStep( float frameSeconds, float timeConstant ) {
++	if ( timeConstant <= 0.0f ) {
++		return 1.0f;
++	}
++	return 1.0f - idMath::Exp( -frameSeconds / timeConstant );
++}
++
+ /*
+ ================
+ Player_HasInteractiveGui
+@@ -8130,11 +8148,33 @@ void idPlayer::UpdateFocus( void ) {
+ 		if ( cursor ) {
+ 			cursor->SetStateInt( "enemyFocus", aimAssistAutoaimLevel > 0.0f ? 1 : 0 );
+ 		}
+-		// Halo scales the stick by 1 - level * friction and adds the target's motion times level * adhesion
++		// Halo scales the stick by 1 - level * friction and adds the target's motion times level * adhesion.
++		// Smoothed here: the adhesion, so a sudden change in speed (a leap, a landing, a new target) can't
++		// jerk the view, and the friction's release, so pulling away fast doesn't snap back to full speed.
++		const float frameSeconds = MS2SEC( gameLocal.GetMSec() );
+ 		const float friction = aimAssistMagnetismLevel * idMath::ClampFloat( 0.0f, 1.0f, pm_AimAssistFriction.GetFloat() );
+-		const float adhesion = aimAssistMagnetismLevel * idMath::ClampFloat( 0.0f, 1.0f, pm_AimAssistAdhesion.GetFloat() );
+-		Player_SetJoystickMagnetism( idMath::Ftoi( 100.0f * ( 1.0f - friction ) + 0.5f ),
+-			aimAssistAngularVelocity.yaw * adhesion, aimAssistAngularVelocity.pitch * adhesion );
++		const idAngles adhesion = aimAssistAngularVelocity * ( aimAssistMagnetismLevel * idMath::ClampFloat( 0.0f, 1.0f, pm_AimAssistAdhesion.GetFloat() ) );
++		if ( friction >= aimAssistFriction ) {
++			aimAssistFriction = friction;
++		} else {
++			aimAssistFriction += ( friction - aimAssistFriction ) * Player_SmoothingStep( frameSeconds, pm_AimAssistFrictionRelease.GetFloat() / 3.0f );
++		}
++		aimAssistAdhesion += ( adhesion - aimAssistAdhesion ) * Player_SmoothingStep( frameSeconds, pm_AimAssistAdhesionTime.GetFloat() );
++		Player_SetJoystickMagnetism( idMath::Ftoi( 100.0f * ( 1.0f - aimAssistFriction ) + 0.5f ), aimAssistAdhesion.yaw, aimAssistAdhesion.pitch );
++
++		// pm_showAimAssist names what asks for a fast follow (it turns the view only while a stick moves)
++		if ( pm_showAimAssist.GetBool() && gameLocal.time >= aimAssistLogTime &&
++			( idMath::Fabs( adhesion.yaw ) > 45.0f || idMath::Fabs( adhesion.pitch ) > 45.0f ) ) {
++			aimAssistLogTime = gameLocal.time + 250;
++			idActor *enemy = bestEnemy.GetEntity();
++			gameLocal.Printf( "aim assist follow: %s %.0f units away, magnetism %.2f, asks %.0f yaw %.0f pitch deg/s, applies %.0f %.0f (its speed %.0f, yours %.0f)\n",
++				enemy ? enemy->GetName() : "?", ( aimAssistPoint - GetEyePosition() ).Length(), aimAssistMagnetismLevel,
++				adhesion.yaw, adhesion.pitch, aimAssistAdhesion.yaw, aimAssistAdhesion.pitch,
++				enemy ? enemy->GetPhysics()->GetLinearVelocity().Length() : 0.0f, GetPhysics()->GetLinearVelocity().Length() );
++		}
++	} else {
++		aimAssistFriction = 0.0f;
++		aimAssistAdhesion.Zero();
+ 	}
+ 
+ 	// openQ4: Xenon aim assist friction, sent to the engine through pm_joystickSlow
+diff --git a/src/game/Player.h b/src/game/Player.h
+index 1b48dcd..c829935 100644
+--- a/src/game/Player.h
++++ b/src/game/Player.h
+@@ -451,6 +451,9 @@ public:
+ 	float					aimAssistDeviation;			// degrees: the most a shot may bend
+ 	idVec3					aimAssistPoint;				// the spot on bestEnemy's body nearest the crosshair
+ 	idAngles				aimAssistAngularVelocity;	// bestEnemy's motion across the view, degrees per second
++	float					aimAssistFriction;			// smoothed stick friction sent to the engine
++	idAngles				aimAssistAdhesion;			// smoothed adhesion sent to the engine, degrees per second
++	int						aimAssistLogTime;			// pm_showAimAssist: next time a fast follow may be logged
+ 	void					UpdateHaloAimAssist( void );
+ 
+ // RITUAL BEGIN
+diff --git a/src/game/gamesys/SysCvar.cpp b/src/game/gamesys/SysCvar.cpp
+index 170dea2..2979722 100644
+--- a/src/game/gamesys/SysCvar.cpp
++++ b/src/game/gamesys/SysCvar.cpp
+@@ -452,6 +452,8 @@ idCVar pm_AimAssistWideScale(		"pm_AimAssistWideScale",	"2",			CVAR_GAME | CVAR_
+ idCVar pm_AimAssistHaloScale(		"pm_AimAssistHaloScale",	"1",			CVAR_GAME | CVAR_FLOAT | CVAR_ARCHIVE, "pm_AimAssist 3, Halo-tuned weapons: scales Halo's autoaim and magnetism angles (1 is Halo CE's).\n", 0.25f, 3.0f );
+ idCVar pm_AimAssistFriction(		"pm_AimAssistFriction",		"0.6",			CVAR_GAME | CVAR_FLOAT | CVAR_ARCHIVE, "pm_AimAssist 3, Halo-tuned weapons: how much the look stick slows on a target, times the magnetism level (Halo CE 0.6).\n", 0.0f, 1.0f );
+ idCVar pm_AimAssistAdhesion(		"pm_AimAssistAdhesion",		"0.7",			CVAR_GAME | CVAR_FLOAT | CVAR_ARCHIVE, "pm_AimAssist 3, Halo-tuned weapons: how much of a target's motion across the view the view follows while the stick is used, times the magnetism level (Halo CE 0.7).\n", 0.0f, 1.0f );
++idCVar pm_AimAssistAdhesionTime(	"pm_AimAssistAdhesionTime",	"0.1",			CVAR_GAME | CVAR_FLOAT | CVAR_ARCHIVE, "pm_AimAssist 3, Halo-tuned weapons: seconds over which the view's follow smooths changes in a target's speed (time constant; 0 is Halo's instant follow).\n", 0.0f, 1.0f );
++idCVar pm_AimAssistFrictionRelease(	"pm_AimAssistFrictionRelease",	"0.15",		CVAR_GAME | CVAR_FLOAT | CVAR_ARCHIVE, "pm_AimAssist 3, Halo-tuned weapons: about how many seconds the stick's friction takes to let go when the aim leaves a target (0 is Halo's instant release).\n", 0.0f, 1.0f );
+ idCVar pm_AimAssistDistance(		"pm_AimAssistDistance",		"1000",			CVAR_GAME | CVAR_INTEGER, "The max aim assist distance.\n");
+ idCVar pm_AimAssistThreshold(		"pm_AimAssistThreshold",	"1.0",			CVAR_GAME | CVAR_FLOAT, "Threshold by which the projectile is aimed at the offending target.\n");
+ idCVar pm_AimAssistFOV(				"pm_AimAssistFOV",			"10",			CVAR_GAME | CVAR_INTEGER, "The field of view for aim assistance.\n");
+diff --git a/src/game/gamesys/SysCvar.h b/src/game/gamesys/SysCvar.h
+index a9b029a..0360017 100644
+--- a/src/game/gamesys/SysCvar.h
++++ b/src/game/gamesys/SysCvar.h
+@@ -283,6 +283,8 @@ extern idCVar pm_AimAssistWideScale;
+ extern idCVar pm_AimAssistHaloScale;
+ extern idCVar pm_AimAssistFriction;
+ extern idCVar pm_AimAssistAdhesion;
++extern idCVar pm_AimAssistAdhesionTime;
++extern idCVar pm_AimAssistFrictionRelease;
+ extern idCVar pm_AimAssistDistance;
+ extern idCVar pm_AimAssistThreshold;
+ extern idCVar pm_AimAssistFOV;
+-- 
+2.53.0.windows.1
+
