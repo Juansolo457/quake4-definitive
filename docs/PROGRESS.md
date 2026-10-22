@@ -52,7 +52,7 @@ So this became a **"definitive edition"**: openQ4 + PC assets + the 360 controll
 ### 7. Graphics
 - Definitive defaults ([GRAPHICS.md](GRAPHICS.md), `config/definitive.cfg`): native 4K borderless, **240 fps cap**, adaptive vsync, **FOV 90**, 4× MSAA + SMAA, 16× AF, 2048 soft shadow maps, authored look. Applied once by `tools/launch_definitive.ps1`.
 - **Low-res textures:** the sources are 256–512 px, and openQ4 was drawing the stock DXT-compressed copies. Worse, those copies inside the PK4s always beat loose hi-res pack files. `image_usePrecompressedTextures 2` fixes both.
-- *HiRes Textures & Models* x2 packs (ModDB) installed and verified: all 822 pack-covered images on Air Defense 1 load at 2×. Level load goes from about 5 s to 16 s once cached (44 s on the first visit).
+- *HiRes Textures & Models* x2 packs (ModDB) installed and verified: all 822 pack-covered images on Air Defense 1 load at 2×. Level load goes from about 5 s to 16 s once cached (44 s on the first visit). Hands-on (Hangar 1): "looks way better with the texture pack".
 
 ### 8. Fixes along the way
 - **Broken saves:** a shallow clone gave openQ4 build number 2, so every save failed validation. Fetching the full history (build 1686) fixed it.
