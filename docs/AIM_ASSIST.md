@@ -31,7 +31,7 @@ The game DLL talks to the engine through a cvar, the same pattern PC Quake 4 alr
 
 | Cvar | Default | Meaning |
 |---|---|---|
-| `pm_AimAssist` | 2 | 0 off; 1 target focus and friction; 2 also the 360 muzzle aim (patch 0009, below). |
+| `pm_AimAssist` | 2 (definitive: 3) | 0 off; 1 target focus and friction; 2 also the 360 muzzle aim (patch 0009, below); 3 Full (Wide): Halo CE's aim assist for the tuned weapons (patch 0014), a wider 360 cone for the rest. |
 | `pm_AimAssistSlow` | 50 | Controller turn speed % while on target (friction) |
 | `pm_AimAssistDistance` | 1000 | Max range (units) |
 | `pm_AimAssistFOV` | 10 | Unused unless `pm_AimAssistTest 1`; the cone is the weapon def key `aimAssistFOV` (default 10% of vertical half-FOV) |
@@ -62,6 +62,55 @@ The aim cone (`bestEnemy`) is the weapon's `aimAssistFOV` % (default 10) of the 
 **Full (Wide), patches 0010–0011.** Hands-on, the 360 bend almost never fired. The 360's target search (kept as modes 1–2) only considers enemies whose bounds touch the box around the 768-unit view ray. Looking along a map axis that box is nearly a line, so an enemy just beside the crosshair is never a target; the ±4° cone only filters that list. Mode 3 searches the whole cone (`idPlayer::FindAimAssistTargetInCone`: hostile, alive, clear line from the eye) and doubles its width (`pm_AimAssistWideScale` 2, about ±8.5°). The first hands-on test also exposed the controller check: it used the last input of any kind, so typing in the console or a mouse twitch turned the bend off. The engine now publishes `in_aimWithController`, set by look-stick movement and cleared only by real mouse movement (3+ counts in a usercmd). With `pm_showAimAssist 1` every shot that isn't bent says why: Aim Assist not Full, aiming with the mouse, weapon without aim assist, or no enemy in the cone. Hands-on after the fix: "test was better", with the console showing shots bending to joints.
 
 **Testing.** `python -I tools/aim_assist_bend_smoke.py <exe> "<Quake 4 install>" <work dir>` passed 2 of 2 runs. It checks four cases: off target the shot turns toward a joint (chest 12.2°, a hand 3.3°); mode 1 and mouse input give no turn; with the crosshair on the enemy there's no turn. The friction test still passes. In game, `pm_showAimAssist 1` logs the chosen joint and draws each corrected shot as a yellow arrow, and the cheat command `testMuzzleAim [aim]` prints (and optionally aims at) where a shot would go. **Not verified yet:** the feel in play with a controller.
+
+## Full (Wide) on Halo CE's model (patch 0014)
+
+Halo CE is the console aim-assist reference, and OpenCE (`source/game/aim_assist.c`, `player_control.c`) shows exactly how it works. Full (Wide), `pm_AimAssist 3`, now runs that model for the weapons tuned from it. User decision (2026-10-21): tune the shotgun, pistol and assault rifle first and the rest as we go. Full (360) is unchanged.
+
+**Values.** Read from the Xbox maps' weapon tags (`aim_assist_parameters`) and the globals tag:
+
+| Quake 4 | Halo CE | Autoaim | Magnetism | Bend cap |
+|---|---|---|---|---|
+| Blaster | Pistol | 3°, 30 wu | 6°, 30 wu | 3° |
+| Machinegun | Assault rifle | 6°, 25 wu | 12°, 25 wu | 6° |
+| Shotgun | Shotgun | 6°, 15 wu | 12°, 15 wu | 6° |
+
+A Halo world unit is about ten feet, so 120 Quake 4 units. Magnetism friction 0.6 and adhesion 0.7 come from the globals tag. All three have deviation 0, so the bend cap is the autoaim angle. Other Halo values, for later weapons: plasma rifle 5°/12°, needler 6°/12° (25 wu), sniper 1°/2° (35 wu), rocket launcher 0°/12° (35 wu).
+
+**How it works** (`idPlayer::UpdateHaloAimAssist`, `rvWeapon::HaloMuzzleAim`):
+1. **Falloff.** Each cone is full strength up to half its angle and half its distance, then fades linearly to nothing at the edge. A target's level is the distance factor times the angle factor. Zoom divides the angles and multiplies the distances by the magnification.
+2. **Aim point.** Halo gives each biped an "autoaim pill". Here it's a vertical capsule inside the target's bounds (radius 0.35 × the narrower side). The aim point is the capsule point nearest the crosshair line, pulled onto that line when the line passes through the capsule.
+3. **Target.** Living hostile actors with an autoaim or magnetism level, sorted by autoaim level, then magnetism level, distance and angle. The first one in clear sight wins.
+4. **Shot bend.** The shot turns from the crosshair toward the aim point by the autoaim level, and never more than the cap. A target at the cone's edge pulls less. A crosshair already on the target (or an ally) leaves the shot alone.
+5. **Magnetism.** The look stick's speed is scaled by `1 − level × 0.6` (friction). While either stick is in use, the view also follows the target's motion across it, times `level × 0.7` (adhesion). That motion is the target's angular velocity relative to the player, capped at Halo's 6° yaw and 3° pitch per 30 Hz tick (180°/s and 90°/s). The game sends it to the engine in `pm_joystickAdhesionYaw`/`Pitch`, cleared every player think, so it stops in a vehicle, a cinematic or at a GUI. The mouse is never assisted.
+
+The 360 assist's friction applies only on the target and stops when zoomed. Halo's fades with the cone and keeps working zoomed.
+
+**Weapons without a profile** keep the wide 360 assist in mode 3: the whole-cone search, doubled width and joint bend described above. Adding a weapon is one line in `rvWeapon::GetHaloAimAssist`.
+
+**Cvars.**
+
+| Cvar | Default | Meaning |
+|---|---|---|
+| `pm_AimAssistHaloScale` | 1 | Scales Halo's autoaim and magnetism angles |
+| `pm_AimAssistFriction` | 0.6 | How much the look stick slows at full magnetism |
+| `pm_AimAssistAdhesion` | 0.7 | How much of the target's motion the view follows at full magnetism |
+| `pm_joystickAdhesionYaw` / `Pitch` | (runtime) | Bridge: degrees per second the view follows now |
+
+`testMuzzleAim` also prints the weapon, both levels, the adhesion and the friction.
+
+**Testing.** `python -I tools/aim_assist_halo_smoke.py <exe> "<Quake 4 install>" <work dir>` passed. It freezes the AI in `game/airdefense1`, puts a grunt 280 units ahead and turns the view off it in steps:
+
+| Off target | Machinegun autoaim / magnetism | Blaster | Shotgun |
+|---|---|---|---|
+| 0–3° | on the body: 1 / 1, no bend | same | same |
+| 6° | 1 / 1, bend 2.4° | 0.37 / 1, bend 0.9° | as machinegun |
+| 9° | 0.18 / 1, bend 1.0° | 0 / 0.18 | as machinegun |
+| 12° | 0 / 0.59 (stick keeps 65%) | none | as machinegun |
+| 15° | 0 / 0.08 | none | as machinegun |
+| 18°+ | none | none | none |
+
+Zoomed, the machinegun's cones shrink (6° off: magnetism 0.84, no autoaim). Strafing past the grunt, the view follows at 21.6°/s. The hyperblaster in mode 3 and the machinegun in mode 2 still bend 4.1° to a joint, as before. **Not verified yet:** the feel in play with a controller.
 
 ## Known gaps (need the 360 disc)
 

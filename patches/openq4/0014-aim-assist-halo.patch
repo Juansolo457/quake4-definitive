@@ -1,0 +1,824 @@
+From 3d21e2de6b9ed189ad501343c254ef6f83beda1e Mon Sep 17 00:00:00 2001
+From: juansolo457 <5344231+Juansolo457@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 20:51:37 -0700
+Subject: [PATCH] Aim assist: Halo CE's model for Full (Wide) on three weapons
+
+pm_AimAssist 3 now runs Halo CE's aim assist (OpenCE aim_assist.c and
+player_control.c) for the weapons tuned from it, with the Xbox maps' values:
+the blaster as the pistol (autoaim 3 degrees, magnetism 6, 30 world units),
+the machinegun as the assault rifle (6/12, 25) and the shotgun (6/12, 15).
+A Halo world unit is 120 Quake 4 units.
+
+- Falloff: full strength to half of each cone's angle and distance, then
+  linear to nothing at the edge. Zoom divides the angles and multiplies the
+  distances by the magnification.
+- Aim point: the spot on a capsule inside the target's bounds nearest the
+  crosshair, pulled onto the aim line when it passes through the body.
+- Shot bend: from the crosshair toward that point by the autoaim level,
+  capped at the autoaim angle. A crosshair already on the target or an ally
+  leaves the shot alone.
+- Magnetism: the look stick slows by level x pm_AimAssistFriction (0.6), and
+  while either stick is used the view follows the target's motion across it
+  by level x pm_AimAssistAdhesion (0.7), capped at Halo's 180 and 90 degrees
+  a second. The game sends it to the engine through pm_joystickAdhesionYaw and
+  pm_joystickAdhesionPitch, cleared each player think.
+
+Other weapons keep the wide 360 assist in mode 3, and mode 2 is unchanged.
+pm_AimAssistHaloScale scales Halo's angles. testMuzzleAim prints the weapon
+and the Halo levels; the help line describes the new Wide.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../pak0/strings/brazilian_openq4.lang        |   4 +-
+ .../baseoq4/pak0/strings/czech_openq4.lang    |   4 +-
+ .../baseoq4/pak0/strings/english_openq4.lang  |   4 +-
+ .../baseoq4/pak0/strings/french_openq4.lang   |   4 +-
+ .../baseoq4/pak0/strings/german_openq4.lang   |   4 +-
+ .../pak0/strings/hungarian_openq4.lang        |   4 +-
+ .../baseoq4/pak0/strings/italian_openq4.lang  |   4 +-
+ .../baseoq4/pak0/strings/polish_openq4.lang   |   4 +-
+ .../baseoq4/pak0/strings/russian_openq4.lang  |   4 +-
+ .../baseoq4/pak0/strings/spanish_openq4.lang  |   4 +-
+ .../baseoq4/pak0/strings/turkish_openq4.lang  |   4 +-
+ .../pak0/strings/ukrainian_openq4.lang        |   4 +-
+ src/framework/UsercmdGen.cpp                  |  11 +-
+ src/game/Player.cpp                           | 259 +++++++++++++++++-
+ src/game/Player.h                             |   7 +
+ src/game/Weapon.cpp                           | 103 +++++++
+ src/game/Weapon.h                             |  12 +
+ src/game/gamesys/SysCmds.cpp                  |  10 +-
+ src/game/gamesys/SysCvar.cpp                  |  11 +-
+ src/game/gamesys/SysCvar.h                    |   3 +
+ 20 files changed, 429 insertions(+), 35 deletions(-)
+
+diff --git a/content/baseoq4/pak0/strings/brazilian_openq4.lang b/content/baseoq4/pak0/strings/brazilian_openq4.lang
+index c88b3e0..3598897 100644
+--- a/content/baseoq4/pak0/strings/brazilian_openq4.lang
++++ b/content/baseoq4/pak0/strings/brazilian_openq4.lang
+@@ -1403,8 +1403,8 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+-	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full (360): shots bend to the body part nearest your crosshair. Wide: Halo-style sticky aim for the blaster, machinegun and shotgun, a wider 360 cone for the others."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off. Halo-style Wide aim uses its own."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+ 	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
+diff --git a/content/baseoq4/pak0/strings/czech_openq4.lang b/content/baseoq4/pak0/strings/czech_openq4.lang
+index a0b7f26..c16eb5a 100644
+--- a/content/baseoq4/pak0/strings/czech_openq4.lang
++++ b/content/baseoq4/pak0/strings/czech_openq4.lang
+@@ -1403,8 +1403,8 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+-	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full (360): shots bend to the body part nearest your crosshair. Wide: Halo-style sticky aim for the blaster, machinegun and shotgun, a wider 360 cone for the others."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off. Halo-style Wide aim uses its own."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+ 	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
+diff --git a/content/baseoq4/pak0/strings/english_openq4.lang b/content/baseoq4/pak0/strings/english_openq4.lang
+index 20962f6..4846a44 100644
+--- a/content/baseoq4/pak0/strings/english_openq4.lang
++++ b/content/baseoq4/pak0/strings/english_openq4.lang
+@@ -1403,8 +1403,8 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+-	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full (360): shots bend to the body part nearest your crosshair. Wide: Halo-style sticky aim for the blaster, machinegun and shotgun, a wider 360 cone for the others."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off. Halo-style Wide aim uses its own."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+ 	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
+diff --git a/content/baseoq4/pak0/strings/french_openq4.lang b/content/baseoq4/pak0/strings/french_openq4.lang
+index c38d5e4..173b8bc 100644
+--- a/content/baseoq4/pak0/strings/french_openq4.lang
++++ b/content/baseoq4/pak0/strings/french_openq4.lang
+@@ -1408,8 +1408,8 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+-	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full (360): shots bend to the body part nearest your crosshair. Wide: Halo-style sticky aim for the blaster, machinegun and shotgun, a wider 360 cone for the others."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off. Halo-style Wide aim uses its own."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+ 	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
+diff --git a/content/baseoq4/pak0/strings/german_openq4.lang b/content/baseoq4/pak0/strings/german_openq4.lang
+index fab2ef1..cc817f8 100644
+--- a/content/baseoq4/pak0/strings/german_openq4.lang
++++ b/content/baseoq4/pak0/strings/german_openq4.lang
+@@ -1403,8 +1403,8 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+-	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full (360): shots bend to the body part nearest your crosshair. Wide: Halo-style sticky aim for the blaster, machinegun and shotgun, a wider 360 cone for the others."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off. Halo-style Wide aim uses its own."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+ 	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
+diff --git a/content/baseoq4/pak0/strings/hungarian_openq4.lang b/content/baseoq4/pak0/strings/hungarian_openq4.lang
+index 11c2182..6e045aa 100644
+--- a/content/baseoq4/pak0/strings/hungarian_openq4.lang
++++ b/content/baseoq4/pak0/strings/hungarian_openq4.lang
+@@ -1403,8 +1403,8 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+-	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full (360): shots bend to the body part nearest your crosshair. Wide: Halo-style sticky aim for the blaster, machinegun and shotgun, a wider 360 cone for the others."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off. Halo-style Wide aim uses its own."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+ 	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
+diff --git a/content/baseoq4/pak0/strings/italian_openq4.lang b/content/baseoq4/pak0/strings/italian_openq4.lang
+index 98adaff..9d87ac1 100644
+--- a/content/baseoq4/pak0/strings/italian_openq4.lang
++++ b/content/baseoq4/pak0/strings/italian_openq4.lang
+@@ -1408,8 +1408,8 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+-	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full (360): shots bend to the body part nearest your crosshair. Wide: Halo-style sticky aim for the blaster, machinegun and shotgun, a wider 360 cone for the others."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off. Halo-style Wide aim uses its own."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+ 	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
+diff --git a/content/baseoq4/pak0/strings/polish_openq4.lang b/content/baseoq4/pak0/strings/polish_openq4.lang
+index 6a4d33b..39d92b1 100644
+--- a/content/baseoq4/pak0/strings/polish_openq4.lang
++++ b/content/baseoq4/pak0/strings/polish_openq4.lang
+@@ -1459,8 +1459,8 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+-	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full (360): shots bend to the body part nearest your crosshair. Wide: Halo-style sticky aim for the blaster, machinegun and shotgun, a wider 360 cone for the others."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off. Halo-style Wide aim uses its own."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+ 	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
+diff --git a/content/baseoq4/pak0/strings/russian_openq4.lang b/content/baseoq4/pak0/strings/russian_openq4.lang
+index 2b2e1d5..f876152 100644
+--- a/content/baseoq4/pak0/strings/russian_openq4.lang
++++ b/content/baseoq4/pak0/strings/russian_openq4.lang
+@@ -1459,8 +1459,8 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+-	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full (360): shots bend to the body part nearest your crosshair. Wide: Halo-style sticky aim for the blaster, machinegun and shotgun, a wider 360 cone for the others."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off. Halo-style Wide aim uses its own."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+ 	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
+diff --git a/content/baseoq4/pak0/strings/spanish_openq4.lang b/content/baseoq4/pak0/strings/spanish_openq4.lang
+index 84ad3b4..76ca80e 100644
+--- a/content/baseoq4/pak0/strings/spanish_openq4.lang
++++ b/content/baseoq4/pak0/strings/spanish_openq4.lang
+@@ -1403,8 +1403,8 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+-	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full (360): shots bend to the body part nearest your crosshair. Wide: Halo-style sticky aim for the blaster, machinegun and shotgun, a wider 360 cone for the others."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off. Halo-style Wide aim uses its own."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+ 	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
+diff --git a/content/baseoq4/pak0/strings/turkish_openq4.lang b/content/baseoq4/pak0/strings/turkish_openq4.lang
+index b533ef0..31ad6e9 100644
+--- a/content/baseoq4/pak0/strings/turkish_openq4.lang
++++ b/content/baseoq4/pak0/strings/turkish_openq4.lang
+@@ -1403,8 +1403,8 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+-	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full (360): shots bend to the body part nearest your crosshair. Wide: Halo-style sticky aim for the blaster, machinegun and shotgun, a wider 360 cone for the others."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off. Halo-style Wide aim uses its own."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+ 	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
+diff --git a/content/baseoq4/pak0/strings/ukrainian_openq4.lang b/content/baseoq4/pak0/strings/ukrainian_openq4.lang
+index 12d1d8e..09a365c 100644
+--- a/content/baseoq4/pak0/strings/ukrainian_openq4.lang
++++ b/content/baseoq4/pak0/strings/ukrainian_openq4.lang
+@@ -1403,8 +1403,8 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+-	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full (360): shots bend to the body part nearest your crosshair. Wide: Halo-style sticky aim for the blaster, machinegun and shotgun, a wider 360 cone for the others."
++	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off. Halo-style Wide aim uses its own."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+ 	"#str_231337"	"360 Controller Feel: turn speed while zoomed, as a percent of normal. 30 is the Xbox 360 default."
+diff --git a/src/framework/UsercmdGen.cpp b/src/framework/UsercmdGen.cpp
+index a5d227d..4234a8a 100644
+--- a/src/framework/UsercmdGen.cpp
++++ b/src/framework/UsercmdGen.cpp
+@@ -1225,6 +1225,13 @@ void idUsercmdGenLocal::JoystickMove( void ) {
+ 		}
+ 	}
+ 
++	// openQ4: Halo-style adhesion (pm_AimAssist 3). While either stick is in use, the view also
++	// follows the target's motion across it, which the game sends in degrees per second.
++	if ( aimWithController && !weaponWheel && ( lookAxisX != 0.0f || lookAxisY != 0.0f || moveAxisX != 0 || moveAxisY != 0 ) ) {
++		viewangles[YAW] += cvarSystem->GetCVarFloat( "pm_joystickAdhesionYaw" ) * usercmdSeconds;
++		viewangles[PITCH] += cvarSystem->GetCVarFloat( "pm_joystickAdhesionPitch" ) * usercmdSeconds;
++	}
++
+ 	if ( hasDedicatedLookAxis ) {
+ 		cmd.rightmove = idMath::ClampChar( cmd.rightmove + moveAxisX );
+ 		cmd.forwardmove = idMath::ClampChar( cmd.forwardmove + moveAxisY );
+@@ -1509,8 +1516,10 @@ void idUsercmdGenLocal::InitForNewMap( void ) {
+ 	toggled_zoom.Clear();
+ 	toggled_run.on = in_alwaysRun.GetBool();
+ 
+-	// a friction value left over from the previous map must not slow the controller
++	// a friction or adhesion value left over from the previous map must not steer the controller
+ 	cvarSystem->SetCVarInteger( "pm_joystickSlow", 0 );
++	cvarSystem->SetCVarFloat( "pm_joystickAdhesionYaw", 0.0f );
++	cvarSystem->SetCVarFloat( "pm_joystickAdhesionPitch", 0.0f );
+ 
+ 	Clear();
+ 	ClearAngles();
+diff --git a/src/game/Player.cpp b/src/game/Player.cpp
+index fd4dd53..9cd82ea 100644
+--- a/src/game/Player.cpp
++++ b/src/game/Player.cpp
+@@ -1252,6 +1252,12 @@ idPlayer::idPlayer() {
+ 
+ 	alreadyDidTeamAnnouncerSound = false;
+ 
++	aimAssistAutoaimLevel	= 0.0f;
++	aimAssistMagnetismLevel	= 0.0f;
++	aimAssistDeviation		= 0.0f;
++	aimAssistPoint.Zero();
++	aimAssistAngularVelocity.Zero();
++
+ 	doInitWeapon			= false;
+ 	noclip					= false;
+ 	godmode					= false;
+@@ -7403,6 +7409,18 @@ Searches nearby locations
+    	}
+ }
+ 
++/*
++================
++Player_ClearJoystickAdhesion
++
++openQ4: stops the Halo-style adhesion (pm_AimAssist 3) turning the view.
++================
++*/
++static void Player_ClearJoystickAdhesion( void ) {
++	cvarSystem->SetCVarFloat( "pm_joystickAdhesionYaw", 0.0f );
++	cvarSystem->SetCVarFloat( "pm_joystickAdhesionPitch", 0.0f );
++}
++
+ /*
+ ================
+ Player_SetJoystickSlow
+@@ -7414,6 +7432,21 @@ aim assist friction percent goes out through pm_joystickSlow (0 or 100 means ful
+ */
+ static void Player_SetJoystickSlow( bool zoomed, int percent ) {
+ 	cvarSystem->SetCVarInteger( "pm_joystickSlow", ( zoomed || percent >= 100 ) ? 0 : percent );
++	Player_ClearJoystickAdhesion();
++}
++
++/*
++================
++Player_SetJoystickMagnetism
++
++openQ4: Halo-style magnetism (pm_AimAssist 3) for the engine: friction as the percent of stick
++turn speed kept, also while zoomed, and adhesion as degrees per second the view follows the target.
++================
++*/
++static void Player_SetJoystickMagnetism( int percent, float adhesionYaw, float adhesionPitch ) {
++	cvarSystem->SetCVarInteger( "pm_joystickSlow", percent >= 100 ? 0 : Max( percent, 1 ) );
++	cvarSystem->SetCVarFloat( "pm_joystickAdhesionYaw", adhesionYaw );
++	cvarSystem->SetCVarFloat( "pm_joystickAdhesionPitch", adhesionPitch );
+ }
+ 
+ /*
+@@ -7752,7 +7785,7 @@ void idPlayer::UpdateFocus( void ) {
+ 			{
+ 				size = dFar * idMath::Tan( DEG2RAD( fovY * 0.5f ) ) * weapon->GetAutoAimFOV()/100.0;
+ 			}
+-			// openQ4: Full (Wide) also widens the cone
++			// openQ4: Full (Wide) also widens the cone (weapons without a Halo profile)
+ 			if ( pm_AimAssist.GetInteger() == 3 ) {
+ 				size *= pm_AimAssistWideScale.GetFloat();
+ 			}
+@@ -8081,15 +8114,31 @@ void idPlayer::UpdateFocus( void ) {
+ 		}
+ 	}
+ 
+-	// openQ4: pm_AimAssist 3 looks for a target in the whole aim cone. The 360 search above only
+-	// sees enemies whose bounds touch the box around the 768-unit view ray, which is nearly a line
+-	// when the view runs along a map axis, so an enemy just beside the crosshair was missed.
+-	if ( weapon && doAimAssist && !gameLocal.isMultiplayer && pm_AimAssist.GetInteger() == 3 && !bestEnemy.GetEntity() ) {
++	// openQ4: pm_AimAssist 3 with a weapon tuned from Halo CE (rvWeapon::GetHaloAimAssist) runs
++	// Halo's aim assist instead: its own target search, then friction and adhesion on the stick.
++	// Other weapons keep the wide 360 assist until they are tuned: the 360 search above only sees
++	// enemies whose bounds touch the box around the 768-unit view ray, which is nearly a line when
++	// the view runs along a map axis, so they also search the whole widened cone.
++	haloAimAssist_t haloParameters;
++	const bool haloAimAssist = !gameLocal.isMultiplayer && pm_AimAssist.GetInteger() == 3 &&
++		weapon != NULL && weapon->AllowAutoAim() && weapon->GetHaloAimAssist( haloParameters );
++	if ( !haloAimAssist && weapon && doAimAssist && !gameLocal.isMultiplayer && pm_AimAssist.GetInteger() == 3 && !bestEnemy.GetEntity() ) {
+ 		bestEnemy = FindAimAssistTargetInCone( aimArea, size, pm_AimAssistDistance.GetFloat() );
+ 	}
++	if ( haloAimAssist ) {
++		UpdateHaloAimAssist();
++		if ( cursor ) {
++			cursor->SetStateInt( "enemyFocus", aimAssistAutoaimLevel > 0.0f ? 1 : 0 );
++		}
++		// Halo scales the stick by 1 - level * friction and adds the target's motion times level * adhesion
++		const float friction = aimAssistMagnetismLevel * idMath::ClampFloat( 0.0f, 1.0f, pm_AimAssistFriction.GetFloat() );
++		const float adhesion = aimAssistMagnetismLevel * idMath::ClampFloat( 0.0f, 1.0f, pm_AimAssistAdhesion.GetFloat() );
++		Player_SetJoystickMagnetism( idMath::Ftoi( 100.0f * ( 1.0f - friction ) + 0.5f ),
++			aimAssistAngularVelocity.yaw * adhesion, aimAssistAngularVelocity.pitch * adhesion );
++	}
+ 
+ 	// openQ4: Xenon aim assist friction, sent to the engine through pm_joystickSlow
+-	if ( !gameLocal.isMultiplayer || (gameLocal.isMultiplayer && entityNumber == gameLocal.localClientNum) ) {
++	if ( !haloAimAssist && ( !gameLocal.isMultiplayer || (gameLocal.isMultiplayer && entityNumber == gameLocal.localClientNum) ) ) {
+ 
+ 		if ( !weapon || !weapon->AllowAutoAim() ) {
+ 			if ( cursor ) {
+@@ -8155,7 +8204,8 @@ void idPlayer::UpdateFocus( void ) {
+ idPlayer::FindAimAssistTargetInCone
+ 
+ openQ4: the nearest living, hostile, unobstructed actor whose bounds meet the aim frustum,
+-for pm_AimAssist 3. halfSize is the frustum's half width at maxDist.
++for pm_AimAssist 3 with a weapon that has no Halo profile. halfSize is the frustum's half width
++at maxDist.
+ ================
+ */
+ idActor *idPlayer::FindAimAssistTargetInCone( const idFrustum &aimArea, float halfSize, float maxDist ) {
+@@ -8193,6 +8243,195 @@ idActor *idPlayer::FindAimAssistTargetInCone( const idFrustum &aimArea, float ha
+ 	return best;
+ }
+ 
++/*
++================
++HaloAimAssist_Attenuation
++
++openQ4: Halo CE's falloff (aim_assist.c compute_attenuation): full strength up to half the
++limit, then linear to nothing at the limit.
++================
++*/
++static float HaloAimAssist_Attenuation( float value, float maximum ) {
++	if ( value >= maximum ) {
++		return 0.0f;
++	}
++	if ( value <= maximum * 0.5f ) {
++		return 1.0f;
++	}
++	return ( maximum - value ) / ( maximum * 0.5f );
++}
++
++/*
++================
++HaloAimAssist_BodyPoint
++
++openQ4: Halo CE's autoaim pill (object_compute_autoaim_target): the point of a capsule along the
++body closest to the aiming line, pulled toward the line by at most the capsule's radius. A
++vertical capsule inside the actor's bounds stands in for Halo's per-biped pill.
++================
++*/
++static idVec3 HaloAimAssist_BodyPoint( const idBounds &bounds, const idVec3 &eye, const idVec3 &dir ) {
++	const idVec3 size = bounds.Size();
++	const float width = 0.35f * Min( size.x, size.y );
++	const idVec3 center = bounds.GetCenter();
++	const idVec3 base( center.x, center.y, bounds[0].z + width );
++	const idVec3 height( 0.0f, 0.0f, Max( 0.0f, size.z - 2.0f * width ) );
++
++	idVec3 point = base;
++	const idVec3 normal = height.Cross( dir );
++	const float normalLengthSqr = normal.LengthSqr();
++	if ( normalLengthSqr > 0.0f ) {
++		const float t = ( ( eye - base ).Cross( dir ) * normal ) / normalLengthSqr;
++		point = base + height * idMath::ClampFloat( 0.0f, 1.0f, t );
++	}
++
++	const idVec3 offset = point - eye;
++	idVec3 perpendicular = offset - dir * ( offset * dir );
++	const float length = perpendicular.Length();
++	if ( length > width && length > 0.0f ) {
++		perpendicular *= width / length;
++	}
++	return point - perpendicular;
++}
++
++/*
++================
++idPlayer::UpdateHaloAimAssist
++
++openQ4: Halo CE's aim assist (OpenCE aim_assist.c aim_assist and local_player_aim_assist) for
++pm_AimAssist 3. The weapon gives an autoaim cone (shots bend) and a wider magnetism cone (the
++view sticks), both with Halo's falloff and both tightened by zoom. Living hostile actors with
++their body point inside either cone are ranked by autoaim level, magnetism level, distance and
++angle, and the first in clear sight becomes bestEnemy, with its motion across the view for the
++stick's adhesion.
++================
++*/
++void idPlayer::UpdateHaloAimAssist( void ) {
++	aimAssistAutoaimLevel = 0.0f;
++	aimAssistMagnetismLevel = 0.0f;
++	aimAssistAngularVelocity.Zero();
++	bestEnemy = NULL;
++
++	haloAimAssist_t parameters;
++	if ( weapon == NULL || !weapon->GetHaloAimAssist( parameters ) ) {
++		return;
++	}
++
++	// zoomed, the angles shrink and the reach grows by the magnification, as in Halo
++	const float baseFov = CalcFov( false );
++	const float zoomFov = CalcFov( true );
++	const float magnification = ( zoomFov > 0.0f && zoomFov < baseFov ) ?
++		idMath::Tan( DEG2RAD( baseFov * 0.5f ) ) / idMath::Tan( DEG2RAD( zoomFov * 0.5f ) ) : 1.0f;
++	const float angleScale = pm_AimAssistHaloScale.GetFloat() / magnification;
++	const float autoaimAngle = parameters.autoaimAngle * angleScale;
++	const float magnetismAngle = parameters.magnetismAngle * angleScale;
++	const float autoaimDistance = parameters.autoaimDistance * magnification;
++	const float magnetismDistance = parameters.magnetismDistance * magnification;
++	aimAssistDeviation = Max( parameters.deviationAngle, parameters.autoaimAngle ) * angleScale;
++	const float searchAngle = Min( Max( autoaimAngle, magnetismAngle ), 60.0f );
++	const float searchDistance = Max( autoaimDistance, magnetismDistance );
++	if ( searchAngle <= 0.0f || searchDistance <= 0.0f ) {
++		return;
++	}
++
++	const idVec3 eye = GetEyePosition();
++	const idMat3 axis = viewAngles.ToMat3();
++	const idVec3 &dir = axis[0];
++	const float farRadius = searchDistance * idMath::Tan( DEG2RAD( searchAngle ) );
++	idBounds bounds( eye );
++	for ( int i = 0; i < 4; i++ ) {
++		bounds.AddPoint( eye + dir * searchDistance + axis[1] * ( ( i & 1 ) ? farRadius : -farRadius ) +
++			axis[2] * ( ( i & 2 ) ? farRadius : -farRadius ) );
++	}
++
++	struct candidate_t {
++		idActor *	actor;
++		idVec3		point;
++		float		distance;
++		float		angle;
++		float		autoaim;
++		float		magnetism;
++	};
++	static const int MAX_CANDIDATES = 64;
++	candidate_t candidates[ MAX_CANDIDATES ];
++	int candidateCount = 0;
++	idClipModel *clipModels[ MAX_GENTITIES ];
++	const int clipCount = gameLocal.ClipModelsTouchingBounds( this, bounds, CONTENTS_BODY, clipModels, MAX_GENTITIES );
++	for ( int i = 0; i < clipCount && candidateCount < MAX_CANDIDATES; i++ ) {
++		idEntity *ent = clipModels[ i ]->GetEntity();
++		if ( ent == NULL || ent->IsHidden() || ent->health <= 0 || !ent->IsType( idAI::GetClassType() ) ||
++			static_cast<idAI *>( ent )->team == team ) {
++			continue;
++		}
++		bool listed = false;
++		for ( int j = 0; j < candidateCount && !listed; j++ ) {
++			listed = ( candidates[ j ].actor == ent );
++		}
++		if ( listed ) {
++			continue;
++		}
++		candidate_t c;
++		c.actor = static_cast<idActor *>( ent );
++		c.point = HaloAimAssist_BodyPoint( ent->GetPhysics()->GetAbsBounds(), eye, dir );
++		idVec3 toPoint = c.point - eye;
++		c.distance = toPoint.Normalize();
++		if ( c.distance <= 0.0f ) {
++			continue;
++		}
++		c.angle = RAD2DEG( idMath::ACos( idMath::ClampFloat( -1.0f, 1.0f, toPoint * dir ) ) );
++		c.autoaim = HaloAimAssist_Attenuation( c.distance, autoaimDistance ) * HaloAimAssist_Attenuation( c.angle, autoaimAngle );
++		c.magnetism = HaloAimAssist_Attenuation( c.distance, magnetismDistance ) * HaloAimAssist_Attenuation( c.angle, magnetismAngle );
++		if ( c.autoaim <= 0.0f && c.magnetism <= 0.0f ) {
++			continue;
++		}
++		// Halo's order: autoaim level, magnetism level, distance, angle
++		int at = candidateCount++;
++		while ( at > 0 ) {
++			const candidate_t &prev = candidates[ at - 1 ];
++			const bool before = c.autoaim != prev.autoaim ? c.autoaim > prev.autoaim :
++				c.magnetism != prev.magnetism ? c.magnetism > prev.magnetism :
++				c.distance != prev.distance ? c.distance < prev.distance : c.angle < prev.angle;
++			if ( !before ) {
++				break;
++			}
++			candidates[ at ] = prev;
++			at--;
++		}
++		candidates[ at ] = c;
++	}
++
++	for ( int i = 0; i < candidateCount; i++ ) {
++		const candidate_t &c = candidates[ i ];
++		trace_t tr;
++		gameLocal.TracePoint( this, tr, eye, c.point, MASK_SHOT_BOUNDINGBOX, this );
++		idEntity *hit = tr.fraction < 1.0f ? gameLocal.entities[ tr.c.entityNum ] : NULL;
++		if ( hit != NULL && hit != c.actor && hit->GetBindMaster() != c.actor ) {
++			continue;
++		}
++		bestEnemy = c.actor;
++		aimAssistPoint = c.point;
++		aimAssistAutoaimLevel = c.autoaim;
++		aimAssistMagnetismLevel = c.magnetism;
++
++		// the target's motion across the view (Halo's relative angular velocity), in degrees per second
++		const idVec3 r = c.point - eye;
++		const idVec3 v = c.actor->GetPhysics()->GetLinearVelocity() - GetPhysics()->GetLinearVelocity();
++		const float horizontalSqr = r.x * r.x + r.y * r.y;
++		if ( horizontalSqr > 1.0f ) {
++			const float horizontal = idMath::Sqrt( horizontalSqr );
++			const float yawRate = ( r.x * v.y - r.y * v.x ) / horizontalSqr;
++			const float pitchUpRate = ( horizontal * v.z - r.z / horizontal * ( r.x * v.x + r.y * v.y ) ) / ( r.z * r.z + horizontalSqr );
++			// Halo caps it at 6 degrees yaw and 3 pitch per 30 Hz tick; Quake 4 pitch is positive looking down
++			aimAssistAngularVelocity.yaw = idMath::ClampFloat( -180.0f, 180.0f, RAD2DEG( yawRate ) );
++			aimAssistAngularVelocity.pitch = idMath::ClampFloat( -90.0f, 90.0f, -RAD2DEG( pitchUpRate ) );
++		}
++		if ( pm_showAimAssist.GetBool() ) {
++			gameRenderWorld->DebugBounds( c.autoaim > 0.0f ? colorRed : colorYellow, idBounds( c.point ).Expand( 2.0f ), vec3_origin, 20 );
++		}
++		break;
++	}
++}
++
+ /*
+ ================
+ idPlayer::ClearFocus
+@@ -10704,6 +10943,12 @@ void idPlayer::Think( void ) {
+ 		return;
+ 	}
+ 
++	// openQ4: the aim assist's adhesion lasts only while UpdateFocus keeps setting it, so it
++	// stops in a vehicle, a cinematic or at a GUI
++	if ( !gameLocal.isMultiplayer ) {
++		Player_ClearJoystickAdhesion();
++	}
++
+ 	// openQ4: a crosshair cvar change is applied in DrawHUD
+ 	// (Player_RefreshCrosshairGUI), which stock did here on the Xbox 360 only.
+ 
+diff --git a/src/game/Player.h b/src/game/Player.h
+index 1899c7a..1b48dcd 100644
+--- a/src/game/Player.h
++++ b/src/game/Player.h
+@@ -445,6 +445,13 @@ public:
+ 	idEntityPtr<idActor>	bestEnemy;
+ //RAVEN END
+ 	idActor *				FindAimAssistTargetInCone( const idFrustum &aimArea, float halfSize, float maxDist );
++	// openQ4: Halo-style aim assist (pm_AimAssist 3), refreshed with bestEnemy each focus update
++	float					aimAssistAutoaimLevel;		// 0..1: how far a shot bends toward aimAssistPoint
++	float					aimAssistMagnetismLevel;	// 0..1: strength of the view's friction and adhesion
++	float					aimAssistDeviation;			// degrees: the most a shot may bend
++	idVec3					aimAssistPoint;				// the spot on bestEnemy's body nearest the crosshair
++	idAngles				aimAssistAngularVelocity;	// bestEnemy's motion across the view, degrees per second
++	void					UpdateHaloAimAssist( void );
+ 
+ // RITUAL BEGIN
+ // squirrel: Mode-agnostic buymenus
+diff --git a/src/game/Weapon.cpp b/src/game/Weapon.cpp
+index 1477d9f..86eaa85 100644
+--- a/src/game/Weapon.cpp
++++ b/src/game/Weapon.cpp
+@@ -2630,6 +2630,12 @@ void rvWeapon::XenonMuzzleAim( const idVec3 &muzzleOrigin, idMat3 &muzzleAxis )
+ 		}
+ 		return;
+ 	}
++	// Full (Wide) with a Halo-tuned weapon bends the Halo way
++	haloAimAssist_t haloParameters;
++	if ( pm_AimAssist.GetInteger() == 3 && GetHaloAimAssist( haloParameters ) ) {
++		HaloMuzzleAim( muzzleOrigin, muzzleAxis );
++		return;
++	}
+ 	idActor *enemy = owner->bestEnemy.GetEntity();
+ 
+ 	const idVec3 eye = owner->GetEyePosition();
+@@ -2696,6 +2702,103 @@ void rvWeapon::XenonMuzzleAim( const idVec3 &muzzleOrigin, idMat3 &muzzleAxis )
+ 	}
+ }
+ 
++/*
++=====================
++rvWeapon::GetHaloAimAssist
++
++openQ4: Halo CE's aim assist values for the Quake 4 weapon that plays the same part, read from the
++Xbox maps' weapon tags. Halo distances are in its world units, about ten feet, so 120 Quake 4
++units each. Only the tuned weapons have a profile; the rest keep the 360 assist.
++=====================
++*/
++bool rvWeapon::GetHaloAimAssist( haloAimAssist_t &parameters ) const {
++	static const struct {
++		const char *	weaponDef;
++		haloAimAssist_t	halo;				// degrees, Halo world units
++	} profiles[] = {
++		{ "weapon_blaster",		{ 3.0f, 30.0f,  6.0f, 30.0f, 0.0f } },		// pistol
++		{ "weapon_machinegun",	{ 6.0f, 25.0f, 12.0f, 25.0f, 0.0f } },		// assault rifle
++		{ "weapon_shotgun",		{ 6.0f, 15.0f, 12.0f, 15.0f, 0.0f } },		// shotgun
++	};
++	static const int NUM_PROFILES = sizeof( profiles ) / sizeof( profiles[0] );
++	static const float HALO_WORLD_UNIT = 120.0f;
++
++	if ( weaponDef == NULL ) {
++		return false;
++	}
++	for ( int i = 0; i < NUM_PROFILES; i++ ) {
++		if ( idStr::Icmp( weaponDef->GetName(), profiles[ i ].weaponDef ) == 0 ) {
++			parameters = profiles[ i ].halo;
++			parameters.autoaimDistance *= HALO_WORLD_UNIT;
++			parameters.magnetismDistance *= HALO_WORLD_UNIT;
++			return true;
++		}
++	}
++	return false;
++}
++
++/*
++=====================
++rvWeapon::HaloMuzzleAim
++
++openQ4: Halo CE's shot bend (OpenCE player_control.c, aim assist on the weapon's aim vector) for
++pm_AimAssist 3. The shot turns from the crosshair toward the point on the target's body nearest
++the crosshair (idPlayer::aimAssistPoint) by the autoaim level, so a target near the edge of the
++cone pulls less, and never by more than the deviation angle. A target that is only inside the
++magnetism cone leaves the shot alone; so does a crosshair already on the target or on an ally.
++=====================
++*/
++void rvWeapon::HaloMuzzleAim( const idVec3 &muzzleOrigin, idMat3 &muzzleAxis ) {
++	idActor *enemy = owner->bestEnemy.GetEntity();
++	const float level = owner->aimAssistAutoaimLevel;
++	if ( enemy == NULL || level <= 0.0f ) {
++		if ( pm_showAimAssist.GetBool() ) {
++			gameLocal.Printf( "aim assist muzzle aim (Halo): shot not bent, %s\n", enemy != NULL ? "view magnetism only" : "no enemy in the aim cone" );
++		}
++		return;
++	}
++
++	const idVec3 eye = owner->GetEyePosition();
++	trace_t tr;
++	gameLocal.TracePoint( owner, tr, eye, eye + owner->viewAngles.ToForward() * 15360.0f, MASK_SHOT_RENDERMODEL, owner );
++	idEntity *hit = tr.fraction < 1.0f ? gameLocal.entities[ tr.c.entityNum ] : NULL;
++	if ( hit != NULL && hit->GetBindMaster() != NULL ) {
++		hit = hit->GetBindMaster();
++	}
++	if ( hit == enemy || ( hit != NULL && hit->IsType( idActor::GetClassType() ) && static_cast<idActor *>( hit )->team == owner->team ) ) {
++		if ( pm_showAimAssist.GetBool() ) {
++			gameLocal.Printf( "aim assist muzzle aim (Halo): crosshair on %s %s\n", hit == enemy ? "target" : "ally", hit->GetName() );
++		}
++		return;
++	}
++
++	const idVec3 aim = muzzleAxis[ 0 ];
++	idVec3 toTarget = owner->aimAssistPoint - muzzleOrigin;
++	if ( toTarget.Normalize() <= 0.0f ) {
++		return;
++	}
++	// Halo's fast_normals_interpolate, then pin_normal_to_cone3d around the unbent aim
++	idVec3 dir = aim + ( toTarget - aim ) * level;
++	if ( dir.Normalize() <= 0.0f ) {
++		return;
++	}
++	const float maxAngle = DEG2RAD( owner->aimAssistDeviation );
++	const float cosine = idMath::ClampFloat( -1.0f, 1.0f, dir * aim );
++	if ( idMath::ACos( cosine ) > maxAngle ) {
++		idVec3 side = dir - aim * cosine;
++		if ( side.Normalize() > 0.0f ) {
++			dir = aim * idMath::Cos( maxAngle ) + side * idMath::Sin( maxAngle );
++		}
++	}
++	if ( pm_showAimAssist.GetBool() ) {
++		gameLocal.Printf( "aim assist muzzle aim (Halo): %s, autoaim level %.2f, bent %.2f of %.2f degrees (cap %.2f)\n", enemy->GetName(), level,
++			RAD2DEG( idMath::ACos( idMath::ClampFloat( -1.0f, 1.0f, dir * aim ) ) ),
++			RAD2DEG( idMath::ACos( idMath::ClampFloat( -1.0f, 1.0f, toTarget * aim ) ) ), owner->aimAssistDeviation );
++		gameRenderWorld->DebugArrow( colorYellow, muzzleOrigin, muzzleOrigin + dir * ( owner->aimAssistPoint - muzzleOrigin ).Length(), 2, 1000 );
++	}
++	muzzleAxis = dir.ToMat3();
++}
++
+ /***********************************************************************
+ 
+ 	Visual presentation
+diff --git a/src/game/Weapon.h b/src/game/Weapon.h
+index d5b1802..1a12d82 100644
+--- a/src/game/Weapon.h
++++ b/src/game/Weapon.h
+@@ -108,6 +108,16 @@ private:
+ 	rvWeapon*	weapon;
+ };
+ 
++// openQ4: one weapon's Halo CE aim assist (aim_assist_parameters in its weapon tag), angles in
++// degrees and distances in Quake 4 units, for pm_AimAssist 3
++typedef struct haloAimAssist_s {
++	float				autoaimAngle;		// shots bend toward a target inside this cone
++	float				autoaimDistance;
++	float				magnetismAngle;		// the view sticks to a target inside this cone
++	float				magnetismDistance;
++	float				deviationAngle;		// the most a shot bends, at least autoaimAngle
++} haloAimAssist_t;
++
+ class rvWeapon : public idClass {
+ public:
+ 
+@@ -154,6 +164,8 @@ public:
+ 	virtual bool		AllowAutoAim				( void ) const { return true; }
+ 	float				GetAutoAimFOV				( void ) const;
+ 	void				XenonMuzzleAim				( const idVec3 &muzzleOrigin, idMat3 &muzzleAxis );
++	bool				GetHaloAimAssist			( haloAimAssist_t &parameters ) const;
++	void				HaloMuzzleAim				( const idVec3 &muzzleOrigin, idMat3 &muzzleAxis );
+ 
+ 	void				Save						( idSaveGame *savefile ) const;
+ 	void				Restore						( idRestoreGame *savefile );
+diff --git a/src/game/gamesys/SysCmds.cpp b/src/game/gamesys/SysCmds.cpp
+index c6be7e0..3d7afd3 100644
+--- a/src/game/gamesys/SysCmds.cpp
++++ b/src/game/gamesys/SysCmds.cpp
+@@ -3375,8 +3375,16 @@ static void Cmd_TestMuzzleAim_f( const idCmdArgs &args ) {
+ 	idMat3 aimed = axis;
+ 	player->weapon->XenonMuzzleAim( origin, aimed );
+ 	const float turn = RAD2DEG( idMath::ACos( idMath::ClampFloat( -1.0f, 1.0f, aimed[0] * axis[0] ) ) );
+-	gameLocal.Printf( "muzzle aim: target %s, shot turned %.2f degrees\n",
++	const idDeclEntityDef *weaponDef = player->GetWeaponDef( player->GetCurrentWeapon() );
++	gameLocal.Printf( "muzzle aim: %s, target %s, shot turned %.2f degrees\n", weaponDef ? weaponDef->GetName() : "?",
+ 		player->bestEnemy.GetEntity() ? player->bestEnemy.GetEntity()->GetName() : "none", turn );
++	haloAimAssist_t halo;
++	if ( pm_AimAssist.GetInteger() == 3 && player->weapon->GetHaloAimAssist( halo ) ) {
++		gameLocal.Printf( "muzzle aim (Halo): autoaim level %.2f, magnetism level %.2f, adhesion %.1f %.1f deg/s, friction keeps %d%%\n",
++			player->aimAssistAutoaimLevel, player->aimAssistMagnetismLevel,
++			cvarSystem->GetCVarFloat( "pm_joystickAdhesionYaw" ), cvarSystem->GetCVarFloat( "pm_joystickAdhesionPitch" ),
++			cvarSystem->GetCVarInteger( "pm_joystickSlow" ) > 0 ? cvarSystem->GetCVarInteger( "pm_joystickSlow" ) : 100 );
++	}
+ 	if ( args.Argc() > 1 && !idStr::Icmp( args.Argv( 1 ), "aim" ) ) {
+ 		player->SetViewAngles( aimed[0].ToAngles() );
+ 	}
+diff --git a/src/game/gamesys/SysCvar.cpp b/src/game/gamesys/SysCvar.cpp
+index 1264f62..170dea2 100644
+--- a/src/game/gamesys/SysCvar.cpp
++++ b/src/game/gamesys/SysCvar.cpp
+@@ -445,9 +445,13 @@ idCVar g_liquidTestVolumeSize(      "g_liquidTestVolumeSize",   "640",
+ // The SDK carries the target focus and stick friction; the 360 build's muzzle aim (pm_AimAssist 2)
+ // was recovered from its executable (rvWeapon::XenonMuzzleAim). pm_AimAssistBump and
+ // pm_AimAssistThreshold are unused there as well.
+-idCVar pm_AimAssist(				"pm_AimAssist",				"2",			CVAR_GAME | CVAR_INTEGER | CVAR_ARCHIVE , "Xbox 360 controller aim assist: 0 off, 1 enemy focus and stick friction, 2 also aims shots at the target (360 muzzle aim), 3 as 2 with a wider cone (pm_AimAssistWideScale) searched in full.\n", 0, 3, idCmdSystem::ArgCompletion_Integer<0,3> );
++idCVar pm_AimAssist(				"pm_AimAssist",				"2",			CVAR_GAME | CVAR_INTEGER | CVAR_ARCHIVE , "Xbox 360 controller aim assist: 0 off, 1 enemy focus and stick friction, 2 also aims shots at the target (360 muzzle aim), 3 Halo CE's aim assist for the weapons tuned from it (blaster, machinegun, shotgun) and a wider 360 cone (pm_AimAssistWideScale) for the rest.\n", 0, 3, idCmdSystem::ArgCompletion_Integer<0,3> );
+ idCVar pm_AimAssistAnyInput(		"pm_AimAssistAnyInput",		"0",			CVAR_GAME | CVAR_BOOL | CVAR_CHEAT, "testing: apply the controller-only aim assist muzzle aim whatever the last input was.\n" );
+-idCVar pm_AimAssistWideScale(		"pm_AimAssistWideScale",	"2",			CVAR_GAME | CVAR_FLOAT | CVAR_ARCHIVE, "pm_AimAssist 3: the aim cone's width as a multiple of the weapon's (the 360's cone is about 4 degrees each side).\n", 1.0f, 4.0f );
++idCVar pm_AimAssistWideScale(		"pm_AimAssistWideScale",	"2",			CVAR_GAME | CVAR_FLOAT | CVAR_ARCHIVE, "pm_AimAssist 3, weapons without a Halo profile: the aim cone's width as a multiple of the weapon's (the 360's cone is about 4 degrees each side).\n", 1.0f, 4.0f );
++// openQ4: Halo CE's aim assist (pm_AimAssist 3); friction and adhesion are the Xbox globals tag's magnetism values
++idCVar pm_AimAssistHaloScale(		"pm_AimAssistHaloScale",	"1",			CVAR_GAME | CVAR_FLOAT | CVAR_ARCHIVE, "pm_AimAssist 3, Halo-tuned weapons: scales Halo's autoaim and magnetism angles (1 is Halo CE's).\n", 0.25f, 3.0f );
++idCVar pm_AimAssistFriction(		"pm_AimAssistFriction",		"0.6",			CVAR_GAME | CVAR_FLOAT | CVAR_ARCHIVE, "pm_AimAssist 3, Halo-tuned weapons: how much the look stick slows on a target, times the magnetism level (Halo CE 0.6).\n", 0.0f, 1.0f );
++idCVar pm_AimAssistAdhesion(		"pm_AimAssistAdhesion",		"0.7",			CVAR_GAME | CVAR_FLOAT | CVAR_ARCHIVE, "pm_AimAssist 3, Halo-tuned weapons: how much of a target's motion across the view the view follows while the stick is used, times the magnetism level (Halo CE 0.7).\n", 0.0f, 1.0f );
+ idCVar pm_AimAssistDistance(		"pm_AimAssistDistance",		"1000",			CVAR_GAME | CVAR_INTEGER, "The max aim assist distance.\n");
+ idCVar pm_AimAssistThreshold(		"pm_AimAssistThreshold",	"1.0",			CVAR_GAME | CVAR_FLOAT, "Threshold by which the projectile is aimed at the offending target.\n");
+ idCVar pm_AimAssistFOV(				"pm_AimAssistFOV",			"10",			CVAR_GAME | CVAR_INTEGER, "The field of view for aim assistance.\n");
+@@ -498,6 +502,9 @@ idCVar pm_zoomedSlow(				"pm_zoomedSlow",			"50",			CVAR_GAME | CVAR_ARCHIVE | C
+ idCVar pm_isZoomed(					"pm_isZoomed",			"0",			CVAR_GAME | CVAR_INTEGER | CVAR_NOCHEAT | CVAR_NORESET, "active scoped look sensitivity percent; 0 when not scoped");
+ // openQ4: carries the Xenon usercmdGen->SetSlowJoystick() value to the engine, the way pm_isZoomed carries the scope slowdown
+ idCVar pm_joystickSlow(				"pm_joystickSlow",		"0",			CVAR_GAME | CVAR_INTEGER | CVAR_NOCHEAT | CVAR_NORESET, "active controller aim assist friction percent; 0 when off target");
++// openQ4: carries Halo-style adhesion (pm_AimAssist 3) to the engine: the degrees per second the view follows the target while the sticks are used
++idCVar pm_joystickAdhesionYaw(		"pm_joystickAdhesionYaw",	"0",		CVAR_GAME | CVAR_FLOAT | CVAR_NOCHEAT | CVAR_NORESET, "active controller aim assist adhesion, yaw degrees per second; 0 when off target");
++idCVar pm_joystickAdhesionPitch(	"pm_joystickAdhesionPitch",	"0",		CVAR_GAME | CVAR_FLOAT | CVAR_NOCHEAT | CVAR_NORESET, "active controller aim assist adhesion, pitch degrees per second; 0 when off target");
+ #endif
+ 
+ // nmckenzie: added ability to try alternate accelerations.
+diff --git a/src/game/gamesys/SysCvar.h b/src/game/gamesys/SysCvar.h
+index 2efc930..a9b029a 100644
+--- a/src/game/gamesys/SysCvar.h
++++ b/src/game/gamesys/SysCvar.h
+@@ -280,6 +280,9 @@ extern idCVar	g_liquidTestVolumeSize;
+ extern idCVar pm_AimAssist;
+ extern idCVar pm_AimAssistAnyInput;
+ extern idCVar pm_AimAssistWideScale;
++extern idCVar pm_AimAssistHaloScale;
++extern idCVar pm_AimAssistFriction;
++extern idCVar pm_AimAssistAdhesion;
+ extern idCVar pm_AimAssistDistance;
+ extern idCVar pm_AimAssistThreshold;
+ extern idCVar pm_AimAssistFOV;
+-- 
+2.53.0.windows.1
+

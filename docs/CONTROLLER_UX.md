@@ -30,9 +30,9 @@ Surveyed 2026-10-21 against openQ4 `cbe967f` plus our patches 0001–0004 and th
 | Invert Y / X | ✔ / ✔ | Y only | Y only | X is a minor gap |
 | Stick layouts | ✔ | Default, Southpaw | + Legacy, Legacy Southpaw | **gap:** Legacy layouts |
 | Button presets | ✔ | full rebinding only | 4 presets + custom | **gap:** presets |
-| Aim assist on/off | ✔ | cvar only before | ✔ | done: No / Slowdown Only / Full (360) (patches 0004, 0009) |
+| Aim assist on/off | ✔ | cvar only before | ✔ | done: No / Slowdown Only / Full (360) / Full (Wide) (patches 0004, 0009–0011) |
 | Aim assist strength | ✔ | n/a | fixed 50% | done: Aim Assist Friction (patch 0004) |
-| Aim assist bullet bend / magnetism | ✔ | n/a | muzzle aim at the joint nearest the crosshair (recovered from `rvWeapon::Attack`; `Bump`/`Threshold` unused) | done (patch 0009), controller only |
+| Aim assist bullet bend / magnetism | ✔ | n/a | muzzle aim at the joint nearest the crosshair (recovered from `rvWeapon::Attack`; `Bump`/`Threshold` unused) | done (patch 0009), controller only. Full (Wide) uses Halo CE's model for the blaster, machinegun and shotgun: capped bend, friction and adhesion (patch 0014) |
 | Vehicle aim assist | n/a | no | 15% cone, 20000 units | **gap:** 360 recon |
 | Analog walk/run | ✔ | analog | walk/run threshold | optional |
 | Vibration + strength | ✔ | ✔ | on/off | done |
