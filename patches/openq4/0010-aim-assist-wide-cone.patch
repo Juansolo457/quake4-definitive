@@ -1,0 +1,425 @@
+From e3fa50184a28b8031805928c84cabfc63b3f67b2 Mon Sep 17 00:00:00 2001
+From: juansolo457 <5344231+Juansolo457@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 19:33:00 -0700
+Subject: [PATCH 10/13] Aim assist: pm_AimAssist 3 finds the target anywhere in
+ the aim cone
+
+The 360 focus code (kept as pm_AimAssist 1 and 2) takes its candidates from the
+clip models touching the box around the 768-unit view ray. Looking along a map
+axis that box is nearly a line, so an enemy just beside the crosshair was never
+a target, and the aim cone only filtered that list.
+
+pm_AimAssist 3 searches the whole aim frustum (CONTENTS_BODY clip models in its
+bounds) for the nearest living, hostile actor with a clear line from the eye.
+Friction and the 360 muzzle aim then use that target. Settings > Controller >
+Aim Assist gains "Full (Wide)".
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../baseoq4/pak0/guis/menu/settings/game.gui  |  2 +-
+ .../pak0/strings/brazilian_openq4.lang        |  4 +-
+ .../baseoq4/pak0/strings/czech_openq4.lang    |  4 +-
+ .../baseoq4/pak0/strings/english_openq4.lang  |  4 +-
+ .../baseoq4/pak0/strings/french_openq4.lang   |  4 +-
+ .../baseoq4/pak0/strings/german_openq4.lang   |  4 +-
+ .../pak0/strings/hungarian_openq4.lang        |  4 +-
+ .../baseoq4/pak0/strings/italian_openq4.lang  |  4 +-
+ .../baseoq4/pak0/strings/polish_openq4.lang   |  4 +-
+ .../baseoq4/pak0/strings/russian_openq4.lang  |  4 +-
+ .../baseoq4/pak0/strings/spanish_openq4.lang  |  4 +-
+ .../baseoq4/pak0/strings/turkish_openq4.lang  |  4 +-
+ .../pak0/strings/ukrainian_openq4.lang        |  4 +-
+ docs/dev/settings-menu-registry.json          |  3 +-
+ src/game/Player.cpp                           | 52 ++++++++++++++++++-
+ src/game/Player.h                             |  1 +
+ src/game/Weapon.cpp                           |  4 +-
+ src/game/gamesys/SysCvar.cpp                  |  2 +-
+ 18 files changed, 82 insertions(+), 30 deletions(-)
+
+diff --git a/content/baseoq4/pak0/guis/menu/settings/game.gui b/content/baseoq4/pak0/guis/menu/settings/game.gui
+index c75968a..c891276 100644
+--- a/content/baseoq4/pak0/guis/menu/settings/game.gui
++++ b/content/baseoq4/pak0/guis/menu/settings/game.gui
+@@ -1392,7 +1392,7 @@
+ 						textscale	0.24
+ 						font	"fonts/lowpixel"
+ 						choices	"#str_231394"
+-						values	"0;1;2"
++						values	"0;1;2;3"
+ 						choiceType	1
+ 
+ 						onAction {
+diff --git a/content/baseoq4/pak0/strings/brazilian_openq4.lang b/content/baseoq4/pak0/strings/brazilian_openq4.lang
+index bd5df17..c88b3e0 100644
+--- a/content/baseoq4/pak0/strings/brazilian_openq4.lang
++++ b/content/baseoq4/pak0/strings/brazilian_openq4.lang
+@@ -1403,7 +1403,7 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Xbox 360 aim assist. Slowdown Only: stick turning slows over an enemy. Full: shots also bend to the enemy body part nearest your crosshair."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+ 	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+@@ -1464,5 +1464,5 @@
+ 	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
+ 	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
+ 	"#str_231393"	"Crouch in your room to crouch in the game."
+-	"#str_231394"	"No;Slowdown Only;Full (360)"
++	"#str_231394"	"No;Slowdown Only;Full (360);Full (Wide)"
+ }
+diff --git a/content/baseoq4/pak0/strings/czech_openq4.lang b/content/baseoq4/pak0/strings/czech_openq4.lang
+index f78dc79..a0b7f26 100644
+--- a/content/baseoq4/pak0/strings/czech_openq4.lang
++++ b/content/baseoq4/pak0/strings/czech_openq4.lang
+@@ -1403,7 +1403,7 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Xbox 360 aim assist. Slowdown Only: stick turning slows over an enemy. Full: shots also bend to the enemy body part nearest your crosshair."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+ 	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+@@ -1464,5 +1464,5 @@
+ 	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
+ 	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
+ 	"#str_231393"	"Crouch in your room to crouch in the game."
+-	"#str_231394"	"No;Slowdown Only;Full (360)"
++	"#str_231394"	"No;Slowdown Only;Full (360);Full (Wide)"
+ }
+diff --git a/content/baseoq4/pak0/strings/english_openq4.lang b/content/baseoq4/pak0/strings/english_openq4.lang
+index 9a5fb90..20962f6 100644
+--- a/content/baseoq4/pak0/strings/english_openq4.lang
++++ b/content/baseoq4/pak0/strings/english_openq4.lang
+@@ -1403,7 +1403,7 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Xbox 360 aim assist. Slowdown Only: stick turning slows over an enemy. Full: shots also bend to the enemy body part nearest your crosshair."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+ 	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+@@ -1464,5 +1464,5 @@
+ 	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
+ 	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
+ 	"#str_231393"	"Crouch in your room to crouch in the game."
+-	"#str_231394"	"No;Slowdown Only;Full (360)"
++	"#str_231394"	"No;Slowdown Only;Full (360);Full (Wide)"
+ }
+diff --git a/content/baseoq4/pak0/strings/french_openq4.lang b/content/baseoq4/pak0/strings/french_openq4.lang
+index 5b7131c..c38d5e4 100644
+--- a/content/baseoq4/pak0/strings/french_openq4.lang
++++ b/content/baseoq4/pak0/strings/french_openq4.lang
+@@ -1408,7 +1408,7 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Xbox 360 aim assist. Slowdown Only: stick turning slows over an enemy. Full: shots also bend to the enemy body part nearest your crosshair."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+ 	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+@@ -1469,5 +1469,5 @@
+ 	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
+ 	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
+ 	"#str_231393"	"Crouch in your room to crouch in the game."
+-	"#str_231394"	"No;Slowdown Only;Full (360)"
++	"#str_231394"	"No;Slowdown Only;Full (360);Full (Wide)"
+ }
+diff --git a/content/baseoq4/pak0/strings/german_openq4.lang b/content/baseoq4/pak0/strings/german_openq4.lang
+index 8d48957..fab2ef1 100644
+--- a/content/baseoq4/pak0/strings/german_openq4.lang
++++ b/content/baseoq4/pak0/strings/german_openq4.lang
+@@ -1403,7 +1403,7 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Xbox 360 aim assist. Slowdown Only: stick turning slows over an enemy. Full: shots also bend to the enemy body part nearest your crosshair."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+ 	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+@@ -1464,5 +1464,5 @@
+ 	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
+ 	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
+ 	"#str_231393"	"Crouch in your room to crouch in the game."
+-	"#str_231394"	"No;Slowdown Only;Full (360)"
++	"#str_231394"	"No;Slowdown Only;Full (360);Full (Wide)"
+ }
+diff --git a/content/baseoq4/pak0/strings/hungarian_openq4.lang b/content/baseoq4/pak0/strings/hungarian_openq4.lang
+index 0f27ba4..11c2182 100644
+--- a/content/baseoq4/pak0/strings/hungarian_openq4.lang
++++ b/content/baseoq4/pak0/strings/hungarian_openq4.lang
+@@ -1403,7 +1403,7 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Xbox 360 aim assist. Slowdown Only: stick turning slows over an enemy. Full: shots also bend to the enemy body part nearest your crosshair."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+ 	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+@@ -1464,5 +1464,5 @@
+ 	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
+ 	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
+ 	"#str_231393"	"Crouch in your room to crouch in the game."
+-	"#str_231394"	"No;Slowdown Only;Full (360)"
++	"#str_231394"	"No;Slowdown Only;Full (360);Full (Wide)"
+ }
+diff --git a/content/baseoq4/pak0/strings/italian_openq4.lang b/content/baseoq4/pak0/strings/italian_openq4.lang
+index 5d6ecb5..98adaff 100644
+--- a/content/baseoq4/pak0/strings/italian_openq4.lang
++++ b/content/baseoq4/pak0/strings/italian_openq4.lang
+@@ -1408,7 +1408,7 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Xbox 360 aim assist. Slowdown Only: stick turning slows over an enemy. Full: shots also bend to the enemy body part nearest your crosshair."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+ 	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+@@ -1469,5 +1469,5 @@
+ 	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
+ 	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
+ 	"#str_231393"	"Crouch in your room to crouch in the game."
+-	"#str_231394"	"No;Slowdown Only;Full (360)"
++	"#str_231394"	"No;Slowdown Only;Full (360);Full (Wide)"
+ }
+diff --git a/content/baseoq4/pak0/strings/polish_openq4.lang b/content/baseoq4/pak0/strings/polish_openq4.lang
+index 5a04040..6a4d33b 100644
+--- a/content/baseoq4/pak0/strings/polish_openq4.lang
++++ b/content/baseoq4/pak0/strings/polish_openq4.lang
+@@ -1459,7 +1459,7 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Xbox 360 aim assist. Slowdown Only: stick turning slows over an enemy. Full: shots also bend to the enemy body part nearest your crosshair."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+ 	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+@@ -1520,5 +1520,5 @@
+ 	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
+ 	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
+ 	"#str_231393"	"Crouch in your room to crouch in the game."
+-	"#str_231394"	"No;Slowdown Only;Full (360)"
++	"#str_231394"	"No;Slowdown Only;Full (360);Full (Wide)"
+ }
+diff --git a/content/baseoq4/pak0/strings/russian_openq4.lang b/content/baseoq4/pak0/strings/russian_openq4.lang
+index 32d2f3f..2b2e1d5 100644
+--- a/content/baseoq4/pak0/strings/russian_openq4.lang
++++ b/content/baseoq4/pak0/strings/russian_openq4.lang
+@@ -1459,7 +1459,7 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Xbox 360 aim assist. Slowdown Only: stick turning slows over an enemy. Full: shots also bend to the enemy body part nearest your crosshair."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+ 	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+@@ -1520,5 +1520,5 @@
+ 	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
+ 	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
+ 	"#str_231393"	"Crouch in your room to crouch in the game."
+-	"#str_231394"	"No;Slowdown Only;Full (360)"
++	"#str_231394"	"No;Slowdown Only;Full (360);Full (Wide)"
+ }
+diff --git a/content/baseoq4/pak0/strings/spanish_openq4.lang b/content/baseoq4/pak0/strings/spanish_openq4.lang
+index 91f9b06..84ad3b4 100644
+--- a/content/baseoq4/pak0/strings/spanish_openq4.lang
++++ b/content/baseoq4/pak0/strings/spanish_openq4.lang
+@@ -1403,7 +1403,7 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Xbox 360 aim assist. Slowdown Only: stick turning slows over an enemy. Full: shots also bend to the enemy body part nearest your crosshair."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+ 	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+@@ -1464,5 +1464,5 @@
+ 	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
+ 	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
+ 	"#str_231393"	"Crouch in your room to crouch in the game."
+-	"#str_231394"	"No;Slowdown Only;Full (360)"
++	"#str_231394"	"No;Slowdown Only;Full (360);Full (Wide)"
+ }
+diff --git a/content/baseoq4/pak0/strings/turkish_openq4.lang b/content/baseoq4/pak0/strings/turkish_openq4.lang
+index 86700c4..b533ef0 100644
+--- a/content/baseoq4/pak0/strings/turkish_openq4.lang
++++ b/content/baseoq4/pak0/strings/turkish_openq4.lang
+@@ -1403,7 +1403,7 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Xbox 360 aim assist. Slowdown Only: stick turning slows over an enemy. Full: shots also bend to the enemy body part nearest your crosshair."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+ 	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+@@ -1464,5 +1464,5 @@
+ 	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
+ 	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
+ 	"#str_231393"	"Crouch in your room to crouch in the game."
+-	"#str_231394"	"No;Slowdown Only;Full (360)"
++	"#str_231394"	"No;Slowdown Only;Full (360);Full (Wide)"
+ }
+diff --git a/content/baseoq4/pak0/strings/ukrainian_openq4.lang b/content/baseoq4/pak0/strings/ukrainian_openq4.lang
+index 6b0c830..12d1d8e 100644
+--- a/content/baseoq4/pak0/strings/ukrainian_openq4.lang
++++ b/content/baseoq4/pak0/strings/ukrainian_openq4.lang
+@@ -1403,7 +1403,7 @@
+ 	"#str_231330"	"Upper limit for accelerated sensitivity. 0 means no limit."
+ 	"#str_231331"	"Use a gamepad. No ignores all controllers."
+ 	"#str_231332"	"The Xbox 360 version's stick feel (dead zones, look curve, smoothing, turn speeds). Overrides Stick Dead Zone, Look Sensitivity and Look Curve."
+-	"#str_231333"	"Xbox 360 aim assist. Slowdown Only: stick turning slows over an enemy. Full: shots also bend to the enemy body part nearest your crosshair."
++	"#str_231333"	"Slowdown Only: turning slows over enemies. Full: shots also bend to the body part nearest your crosshair (360). Wide: anywhere near an enemy."
+ 	"#str_231334"	"Turn speed while your aim is on an enemy, as a percent of normal. Lower feels stickier; 100 turns the slowdown off."
+ 	"#str_231335"	"360 Controller Feel: left and right turn speed. 0.0253 is the Xbox 360 default."
+ 	"#str_231336"	"360 Controller Feel: up and down look speed. 0.0209 is the Xbox 360 default."
+@@ -1464,5 +1464,5 @@
+ 	"#str_231391"	"Grip the front of the gun with your off hand to hold it in both hands."
+ 	"#str_231392"	"Darkens the edges of your view while you move or turn smoothly, to reduce motion sickness."
+ 	"#str_231393"	"Crouch in your room to crouch in the game."
+-	"#str_231394"	"No;Slowdown Only;Full (360)"
++	"#str_231394"	"No;Slowdown Only;Full (360);Full (Wide)"
+ }
+diff --git a/docs/dev/settings-menu-registry.json b/docs/dev/settings-menu-registry.json
+index a068653..152a8cf 100644
+--- a/docs/dev/settings-menu-registry.json
++++ b/docs/dev/settings-menu-registry.json
+@@ -2659,7 +2659,8 @@
+       "values": [
+         "0",
+         "1",
+-        "2"
++        "2",
++        "3"
+       ]
+     },
+     {
+diff --git a/src/game/Player.cpp b/src/game/Player.cpp
+index 2616898..e48f566 100644
+--- a/src/game/Player.cpp
++++ b/src/game/Player.cpp
+@@ -8077,6 +8077,13 @@ void idPlayer::UpdateFocus( void ) {
+ 		}
+ 	}
+ 
++	// openQ4: pm_AimAssist 3 looks for a target in the whole aim cone. The 360 search above only
++	// sees enemies whose bounds touch the box around the 768-unit view ray, which is nearly a line
++	// when the view runs along a map axis, so an enemy just beside the crosshair was missed.
++	if ( weapon && doAimAssist && !gameLocal.isMultiplayer && pm_AimAssist.GetInteger() == 3 && !bestEnemy.GetEntity() ) {
++		bestEnemy = FindAimAssistTargetInCone( aimArea, size, pm_AimAssistDistance.GetFloat() );
++	}
++
+ 	// openQ4: Xenon aim assist friction, sent to the engine through pm_joystickSlow
+ 	if ( !gameLocal.isMultiplayer || (gameLocal.isMultiplayer && entityNumber == gameLocal.localClientNum) ) {
+ 
+@@ -8136,7 +8143,50 @@ void idPlayer::UpdateFocus( void ) {
+  	if ( cursor && ( oldTalkCursor != talkCursor ) ) {
+  		cursor->SetStateInt( "talkcursor", talkCursor );
+  	}
+- 
++
++}
++
++/*
++================
++idPlayer::FindAimAssistTargetInCone
++
++openQ4: the nearest living, hostile, unobstructed actor whose bounds meet the aim frustum,
++for pm_AimAssist 3. halfSize is the frustum's half width at maxDist.
++================
++*/
++idActor *idPlayer::FindAimAssistTargetInCone( const idFrustum &aimArea, float halfSize, float maxDist ) {
++	const idVec3 eye = GetEyePosition();
++	const idMat3 axis = viewAngles.ToMat3();
++	const idVec3 farCenter = eye + axis[0] * maxDist;
++	idBounds bounds( eye );
++	for ( int i = 0; i < 4; i++ ) {
++		bounds.AddPoint( farCenter + axis[1] * ( ( i & 1 ) ? halfSize : -halfSize ) + axis[2] * ( ( i & 2 ) ? halfSize : -halfSize ) );
++	}
++
++	idClipModel *clipModels[ MAX_GENTITIES ];
++	const int count = gameLocal.ClipModelsTouchingBounds( this, bounds, CONTENTS_BODY, clipModels, MAX_GENTITIES );
++	idActor *best = NULL;
++	float bestDist = maxDist;
++	for ( int i = 0; i < count; i++ ) {
++		idEntity *ent = clipModels[ i ]->GetEntity();
++		if ( ent == NULL || ent->IsHidden() || ent->health <= 0 || !ent->IsType( idAI::GetClassType() ) ||
++			static_cast<idAI *>( ent )->team == team ) {
++			continue;
++		}
++		const idBounds &absBounds = ent->GetPhysics()->GetAbsBounds();
++		const float dist = absBounds.ShortestDistance( eye );
++		if ( dist >= bestDist || !aimArea.IntersectsBounds( absBounds ) ) {
++			continue;
++		}
++		trace_t tr;
++		gameLocal.TracePoint( this, tr, eye, absBounds.GetCenter(), MASK_SHOT_BOUNDINGBOX, this );
++		if ( tr.fraction < 1.0f && tr.c.entityNum != ent->entityNumber ) {
++			continue;
++		}
++		bestDist = dist;
++		best = static_cast<idActor *>( ent );
++	}
++	return best;
+ }
+ 
+ /*
+diff --git a/src/game/Player.h b/src/game/Player.h
+index 5157113..1899c7a 100644
+--- a/src/game/Player.h
++++ b/src/game/Player.h
+@@ -444,6 +444,7 @@ public:
+ // openQ4: kept on every platform for the aim assist (not saved; rebuilt each focus update)
+ 	idEntityPtr<idActor>	bestEnemy;
+ //RAVEN END
++	idActor *				FindAimAssistTargetInCone( const idFrustum &aimArea, float halfSize, float maxDist );
+ 
+ // RITUAL BEGIN
+ // squirrel: Mode-agnostic buymenus
+diff --git a/src/game/Weapon.cpp b/src/game/Weapon.cpp
+index c292850..526ab0a 100644
+--- a/src/game/Weapon.cpp
++++ b/src/game/Weapon.cpp
+@@ -2611,7 +2611,7 @@ single player and controller only. pm_AimAssistBump and pm_AimAssistThreshold ar
+ void rvWeapon::XenonMuzzleAim( const idVec3 &muzzleOrigin, idMat3 &muzzleAxis ) {
+ 	// ui_radialStickActive is the engine's last-input-was-a-controller flag, refreshed every usercmd.
+ 	const bool controller = cvarSystem->GetCVarBool( "ui_radialStickActive" ) || pm_AimAssistAnyInput.GetBool();
+-	if ( pm_AimAssist.GetInteger() != 2 || gameLocal.isMultiplayer || owner == NULL || !controller || !AllowAutoAim() ) {
++	if ( pm_AimAssist.GetInteger() < 2 || gameLocal.isMultiplayer || owner == NULL || !controller || !AllowAutoAim() ) {
+ 		return;
+ 	}
+ 	idActor *enemy = owner->bestEnemy.GetEntity();
+@@ -3297,7 +3297,7 @@ void rvWeapon::Attack( bool altAttack, int num_attacks, float spread, float fuse
+ 		muzzleOrigin += playerViewAxis[0] * muzzleOffset;
+ 	}
+ 
+-	// openQ4: Xbox 360 muzzle aim (pm_AimAssist 2)
++	// openQ4: Xbox 360 muzzle aim (pm_AimAssist 2 and 3)
+ 	XenonMuzzleAim( muzzleOrigin, muzzleAxis );
+ 
+ 	// add some to the kick time, incrementally moving repeat firing weapons back
+diff --git a/src/game/gamesys/SysCvar.cpp b/src/game/gamesys/SysCvar.cpp
+index bab53a6..2b6ab8d 100644
+--- a/src/game/gamesys/SysCvar.cpp
++++ b/src/game/gamesys/SysCvar.cpp
+@@ -445,7 +445,7 @@ idCVar g_liquidTestVolumeSize(      "g_liquidTestVolumeSize",   "640",
+ // The SDK carries the target focus and stick friction; the 360 build's muzzle aim (pm_AimAssist 2)
+ // was recovered from its executable (rvWeapon::XenonMuzzleAim). pm_AimAssistBump and
+ // pm_AimAssistThreshold are unused there as well.
+-idCVar pm_AimAssist(				"pm_AimAssist",				"2",			CVAR_GAME | CVAR_INTEGER | CVAR_ARCHIVE , "Xbox 360 controller aim assist: 0 off, 1 enemy focus and stick friction, 2 also aims shots at the target (360 muzzle aim).\n", 0, 2, idCmdSystem::ArgCompletion_Integer<0,2> );
++idCVar pm_AimAssist(				"pm_AimAssist",				"2",			CVAR_GAME | CVAR_INTEGER | CVAR_ARCHIVE , "Xbox 360 controller aim assist: 0 off, 1 enemy focus and stick friction, 2 also aims shots at the target (360 muzzle aim), 3 as 2 with the target found anywhere in the aim cone.\n", 0, 3, idCmdSystem::ArgCompletion_Integer<0,3> );
+ idCVar pm_AimAssistAnyInput(		"pm_AimAssistAnyInput",		"0",			CVAR_GAME | CVAR_BOOL | CVAR_CHEAT, "testing: apply the controller-only aim assist muzzle aim whatever the last input was.\n" );
+ idCVar pm_AimAssistDistance(		"pm_AimAssistDistance",		"1000",			CVAR_GAME | CVAR_INTEGER, "The max aim assist distance.\n");
+ idCVar pm_AimAssistThreshold(		"pm_AimAssistThreshold",	"1.0",			CVAR_GAME | CVAR_FLOAT, "Threshold by which the projectile is aimed at the offending target.\n");
+-- 
+2.53.0.windows.1
+

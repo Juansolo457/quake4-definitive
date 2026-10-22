@@ -1,0 +1,296 @@
+From b971cbac00c01691c03a7199746aa99453217d77 Mon Sep 17 00:00:00 2001
+From: juansolo457 <5344231+Juansolo457@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 19:59:54 -0700
+Subject: [PATCH 13/13] Settings menu: show controller focus, LB/RB switch tabs
+
+Driving Settings > Controls with the D-pad moved focus down the key bindings
+but nothing lit up (bindDefs and buttons only highlight under the mouse), so
+input looked lost. Reaching another tab meant walking every row.
+
+- While a controller drives a classic menu, the desktop outlines its focused
+  control after drawing (idWindow::DrawControllerFocus), clipped to scrolled
+  lists and only when every ancestor is visible.
+- LB/RB press the previous/next Settings tab button (Controls, Game Options,
+  Display, Audio) through the new idUserInterface::RunWindowAction, then focus
+  the new page's first control. Page scrolling moves to LT/RT, which also take
+  over the held-key repeat.
+- gui_debugControllerFocus 1 prints each focus move.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/framework/Session_menu.cpp         | 57 +++++++++++++++++++++++---
+ src/ui/UserInterface.cpp               | 13 ++++++
+ src/ui/UserInterface.h                 |  5 +++
+ src/ui/UserInterfaceLocal.h            |  1 +
+ src/ui/Window.cpp                      | 54 +++++++++++++++++++++++-
+ src/ui/Window.h                        |  1 +
+ tools/tests/ui_controller_menu_pump.py |  2 +-
+ 7 files changed, 125 insertions(+), 8 deletions(-)
+
+diff --git a/src/framework/Session_menu.cpp b/src/framework/Session_menu.cpp
+index 100bfc1..a9ed5f0 100644
+--- a/src/framework/Session_menu.cpp
++++ b/src/framework/Session_menu.cpp
+@@ -410,11 +410,12 @@ static int GetHeldControllerMenuKey( void ) {
+ 	if ( idKeyInput::IsDown( K_JOY11 ) ) {
+ 		return K_JOY11;
+ 	}
+-	if ( idKeyInput::IsDown( K_JOY1 ) ) {
+-		return K_JOY1;
++	// the triggers page-scroll settings lists; the bumpers switch tabs once per press
++	if ( idKeyInput::IsDown( K_JOY16 ) ) {
++		return K_JOY16;
+ 	}
+-	if ( idKeyInput::IsDown( K_JOY2 ) ) {
+-		return K_JOY2;
++	if ( idKeyInput::IsDown( K_JOY15 ) ) {
++		return K_JOY15;
+ 	}
+ 	return 0;
+ }
+@@ -4643,6 +4644,33 @@ static bool ScrollMainMenuSettingsRowIntoView( idUserInterface *gui, const char
+ 	return false;
+ }
+ 
++// The Settings tabs in order, by page (desktop::curr) and the button that opens it.
++static const struct mainMenuSettingsTab_t {
++	int page;
++	const char *button;
++} MAINMENU_SETTINGS_TABS[] = {
++	{ 9, "set_b_controls" },
++	{ 21, "set_b_gameoptions" },
++	{ 22, "set_b_system" },
++	{ 36, "set_b_audio" },
++};
++
++// LB/RB on a Settings page press the previous or next tab's button. Returns the
++// command the button produced (possibly ""), or NULL when the key is not a tab switch.
++static const char *MainMenuSettingsTabCommand( idUserInterface *gui, int key ) {
++	if ( gui == NULL || ( key != K_JOY1 && key != K_JOY2 ) || MainMenuSettingsPopupIsVisible( gui ) ) {
++		return NULL;
++	}
++	const int count = static_cast<int>( sizeof( MAINMENU_SETTINGS_TABS ) / sizeof( MAINMENU_SETTINGS_TABS[ 0 ] ) );
++	for ( int i = 0; i < count; ++i ) {
++		if ( MainMenuWindowStateEqualsInt( gui, "desktop::curr", MAINMENU_SETTINGS_TABS[ i ].page ) ) {
++			const int next = ( i + ( key == K_JOY2 ? 1 : count - 1 ) ) % count;
++			return gui->RunWindowAction( MAINMENU_SETTINGS_TABS[ next ].button );
++		}
++	}
++	return NULL;
++}
++
+ static bool HandleMainMenuSettingsScrollInput( idUserInterface *gui, int key ) {
+ 	int delta = 0;
+ 	bool toStart = false;
+@@ -4656,12 +4684,12 @@ static bool HandleMainMenuSettingsScrollInput( idUserInterface *gui, int key ) {
+ 			break;
+ 		case K_PGUP:
+ 		case K_KP_PGUP:
+-		case K_JOY1:
++		case K_JOY16:	// left trigger (the bumpers switch tabs)
+ 			delta = -MENU_SETTINGS_PAGE_SCROLL_STEP;
+ 			break;
+ 		case K_PGDN:
+ 		case K_KP_PGDN:
+-		case K_JOY2:
++		case K_JOY15:	// right trigger
+ 			delta = MENU_SETTINGS_PAGE_SCROLL_STEP;
+ 			break;
+ 		case K_HOME:
+@@ -4743,6 +4771,23 @@ void idSessionLocal::MenuEvent( const sysEvent_t *event ) {
+ 	}
+ 
+ 	if ( event->evType == SE_KEY && event->evValue2 == 1 ) {
++		const char *tabCommand = MainMenuSettingsTabCommand( guiActive, event->evValue );
++		if ( tabCommand != NULL ) {
++			if ( tabCommand[ 0 ] ) {
++				DispatchCommand( guiActive, idStr( tabCommand ).c_str() );
++			}
++			// Focus the new page's first control, as a D-pad press would from nothing.
++			sysEvent_t down;
++			memset( &down, 0, sizeof( down ) );
++			down.evType = SE_KEY;
++			down.evValue = K_JOY10;
++			down.evValue2 = 1;
++			if ( guiActive != NULL ) {
++				guiActive->HandleEvent( &down, common->GetPresentationTime() );
++			}
++			SyncMainMenuSettingsScrollPages( guiActive );
++			return;
++		}
+ 		if ( HandleMainMenuSettingsScrollInput( guiActive, event->evValue ) ) {
+ 			return;
+ 		}
+diff --git a/src/ui/UserInterface.cpp b/src/ui/UserInterface.cpp
+index f5514cc..d00fb71 100644
+--- a/src/ui/UserInterface.cpp
++++ b/src/ui/UserInterface.cpp
+@@ -2078,6 +2078,19 @@ void idUserInterfaceLocal::ClampCursor( void ) {
+ 	cursorY = idMath::ClampFloat( minY, maxY, cursorY );
+ }
+ 
++const char *idUserInterfaceLocal::RunWindowAction( const char *windowName ) {
++	drawWin_t *found = desktop != NULL ? desktop->FindChildByName( windowName ) : NULL;
++	if ( found == NULL || found->win == NULL ) {
++		return NULL;
++	}
++	idWindow *window = found->win;
++	window->cmd.Clear();
++	window->RunScript( idWindow::ON_ACTION );
++	returnCmd = window->cmd;
++	window->cmd.Clear();
++	return returnCmd.c_str();
++}
++
+ bool idUserInterfaceLocal::GetMaxTextIndex( const char *windowName, const char *text, wrapInfo_t& wrapInfo ) const {
+ 	if ( desktop == NULL ) {
+ 		return false;
+diff --git a/src/ui/UserInterface.h b/src/ui/UserInterface.h
+index 3243270..1c1a4cf 100644
+--- a/src/ui/UserInterface.h
++++ b/src/ui/UserInterface.h
+@@ -123,6 +123,11 @@ public:
+ 	virtual float				CursorY( void ) = 0;
+ 	virtual bool				GetMaxTextIndex( const char *windowName, const char *text, wrapInfo_t& wrapInfo ) const = 0;
+ 
++								// openQ4: runs a window's onAction as a click would and returns the command
++								// it produced ("" if none), so a controller can press menu buttons by name.
++								// Returns NULL when this gui has no such window.
++	virtual const char *		RunWindowAction( const char *windowName ) { return NULL; }
++
+ };
+ 
+ 
+diff --git a/src/ui/UserInterfaceLocal.h b/src/ui/UserInterfaceLocal.h
+index e9b640a..578444a 100644
+--- a/src/ui/UserInterfaceLocal.h
++++ b/src/ui/UserInterfaceLocal.h
+@@ -86,6 +86,7 @@ public:
+ 	virtual float				CursorY() { return cursorY; }
+ 	virtual idVec4				GetLightColor(void) override;
+ 	virtual bool				GetMaxTextIndex( const char *windowName, const char *text, wrapInfo_t& wrapInfo ) const override;
++	virtual const char *		RunWindowAction( const char *windowName ) override;
+ 
+ 	virtual size_t				Size() override;
+ 	virtual bool				IsMenuGui() const override;
+diff --git a/src/ui/Window.cpp b/src/ui/Window.cpp
+index e598143..9ba6b8c 100644
+--- a/src/ui/Window.cpp
++++ b/src/ui/Window.cpp
+@@ -429,6 +429,7 @@ bool idWindow::registerIsTemporary[MAX_EXPRESSION_REGISTERS];		// statics to ass
+ //wexpOp_t idWindow::shaderOps[MAX_EXPRESSION_OPS];
+ 
+ idCVar idWindow::gui_debug( "gui_debug", "0", CVAR_GUI | CVAR_BOOL, "" );
++static idCVar gui_debugControllerFocus( "gui_debugControllerFocus", "0", CVAR_GUI | CVAR_BOOL, "print where controller navigation moves menu focus" );
+ idCVar idWindow::gui_edit( "gui_edit", "0", CVAR_GUI | CVAR_BOOL, "" );
+ extern idCVar gui_debugScript;
+ 
+@@ -1520,11 +1521,18 @@ const char *idWindow::HandleEvent(const sysEvent_t *event, bool *updateVisuals)
+ 				const bool selfConsumesDirection = ( focusedChild == this ) && WindowConsumesDirectionalNavigation( this, event->evValue );
+ 				// Only a control that uses this direction sees it; the rest move focus.
+ 				if ( focusedChild && focusedChild != this && WindowConsumesDirectionalNavigation( focusedChild, event->evValue ) ) {
++					if ( gui_debugControllerFocus.GetBool() ) {
++						common->Printf( "controller focus: %s keeps key %d\n", focusedChild->GetName(), event->evValue );
++					}
+ 					const char *childRet = focusedChild->HandleEvent(event, updateVisuals);
+ 					return childRet ? childRet : "";
+ 				}
+ 				if ( !selfConsumesDirection ) {
+ 					NavigateFocus( this, controllerFocusDirection, true );
++					if ( gui_debugControllerFocus.GetBool() ) {
++						idWindow *now = GetFocusedChild();
++						common->Printf( "controller focus: %s -> %s\n", focusedChild ? focusedChild->GetName() : "(none)", now ? now->GetName() : "(none)" );
++					}
+ 				}
+ 			} else {
+ 				idWindow *focusedChild = GetFocusedChild();
+@@ -2088,9 +2096,13 @@ void idWindow::Redraw(float x, float y) {
+ 	// Put transforms back to what they were before the children were processed
+ 	dc->SetTransformInfo(oldOrg, oldTrans);
+ 
++	if ( ( flags & WIN_DESKTOP ) && gui->ControllerNavigation() ) {
++		DrawControllerFocus();
++	}
++
+ 	if ( pushWindowClip ) {
+ 		dc->PopClipRect();
+-	} 
++	}
+ 
+ 	if (gui_edit.GetBool()  || (flags & WIN_DESKTOP && !( flags & WIN_NOCURSOR )  && !hideCursor && (gui->Active() || ( flags & WIN_MENUGUI ) ))) {
+ 		dc->SetTransformInfo(vec3_origin, mat3_identity);
+@@ -6048,6 +6060,46 @@ bool idWindow::IsSimple() {
+ 	return false;
+ }
+ 
++/*
++================
++idWindow::DrawControllerFocus
++
++openQ4: outlines the desktop's focused control while a controller drives the menu.
++Many controls (key bindings, buttons) only light up under the mouse, so without
++this nothing on screen shows where the D-pad is. Called from the desktop's Redraw
++after its children, whose drawing has just updated their screen positions.
++================
++*/
++void idWindow::DrawControllerFocus() {
++	idWindow *focus = GetFocusedChild();
++	if ( focus == NULL || focus == this ) {
++		return;
++	}
++	idRectangle box( focus->actualX, focus->actualY, focus->drawRect.w, focus->drawRect.h );
++	// Only what is drawn: every ancestor visible, and inside each clipping one (scrolled lists).
++	for ( idWindow *w = focus; w != NULL && w != this; w = w->parent ) {
++		if ( !w->IsVisible() ) {
++			return;
++		}
++		idWindow *clip = w->parent;
++		if ( clip != NULL && clip != this && !( clip->flags & WIN_NOCLIP ) ) {
++			const float x0 = Max( box.x, clip->actualX );
++			const float y0 = Max( box.y, clip->actualY );
++			const float x1 = Min( box.x + box.w, clip->actualX + clip->drawRect.w );
++			const float y1 = Min( box.y + box.h, clip->actualY + clip->drawRect.h );
++			if ( x1 <= x0 || y1 <= y0 ) {
++				return;
++			}
++			box = idRectangle( x0, y0, x1 - x0, y1 - y0 );
++		}
++	}
++	static const idVec4 fill( 1.0f, 0.745f, 0.137f, 0.12f );
++	static const idVec4 edge( 1.0f, 0.745f, 0.137f, 0.9f );
++	dc->SetTransformInfo( vec3_origin, mat3_identity );
++	dc->DrawFilledRect( box.x - 2.0f, box.y - 1.0f, box.w + 4.0f, box.h + 2.0f, fill );
++	dc->DrawRect( box.x - 2.0f, box.y - 1.0f, box.w + 4.0f, box.h + 2.0f, 1.0f, edge );
++}
++
+ /*
+ ================
+ idWindow::UsesSimpleWindowClipBehavior
+diff --git a/src/ui/Window.h b/src/ui/Window.h
+index 0e9d5f0..1d37208 100644
+--- a/src/ui/Window.h
++++ b/src/ui/Window.h
+@@ -403,6 +403,7 @@ protected:
+ 	friend class idUserInterfaceManagerLocal;
+ 	bool IsSimple();
+ 	bool UsesSimpleWindowClipBehavior() const;
++	void DrawControllerFocus();
+ 	bool HasDirectChildReference( const idWindow *window ) const;
+ 	bool HasDescendantReference( const idWindow *window ) const;
+ 	static int SaveGameChildIDCompare( idWindow * const *left, idWindow * const *right );
+diff --git a/tools/tests/ui_controller_menu_pump.py b/tools/tests/ui_controller_menu_pump.py
+index dc0d1d1..abfbdee 100644
+--- a/tools/tests/ui_controller_menu_pump.py
++++ b/tools/tests/ui_controller_menu_pump.py
+@@ -30,7 +30,7 @@ SUPPORT = r'''
+ #include <vector>
+ enum { SE_KEY = 1 };
+ struct sysEvent_t { int evType = 0; int evValue = 0; int evValue2 = 0; int evValue3 = 0; int evPtrLength = 0; void* evPtr = nullptr; int inputDevice = 0; };
+-enum { K_JOY1 = 200, K_JOY2, K_JOY3, K_JOY4, K_JOY5, K_JOY6, K_JOY7, K_JOY8, K_JOY9, K_JOY10, K_JOY11, K_JOY12 };
++enum { K_JOY1 = 200, K_JOY2, K_JOY3, K_JOY4, K_JOY5, K_JOY6, K_JOY7, K_JOY8, K_JOY9, K_JOY10, K_JOY11, K_JOY12, K_JOY13, K_JOY14, K_JOY15, K_JOY16 };
+ enum { AXIS_SIDE, AXIS_FORWARD, AXIS_UP, AXIS_ROLL, AXIS_YAW, AXIS_PITCH };
+ static int checks = 0;
+ #define CHECK(x) do { ++checks; if (!(x)) { std::fprintf(stderr, "check failed line %d: %s\n", __LINE__, #x); std::exit(1); } } while (false)
+-- 
+2.53.0.windows.1
+

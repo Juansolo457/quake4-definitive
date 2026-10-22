@@ -78,6 +78,12 @@ Fixed in openQ4's classic GUI code (`src/ui/Window.cpp`):
 
 Covered by openQ4's `tools/tests/menu_controller_navigation.py` (extended). **Not verified:** a hands-on pass with a controller.
 
+## Settings with a controller, round 2 (patch 0013)
+Hands-on after 0006: on Settings > Controls the D-pad "did nothing", and other tabs were out of reach. Driving the menu headless (`testKeyEvent`, patch 0012; `gui_debugControllerFocus 1` logs each move) showed focus *was* moving down the key-binding rows, but key bindings and buttons only light up under the mouse.
+- The menu now outlines the focused control (amber box) whenever a controller is driving it, on every classic page. The outline is clipped to scrolled lists.
+- **LB/RB** switch tabs (Controls, Game Options, Display, Audio) and put focus on the new page's first control. **LT/RT** page-scroll long lists (hold to repeat).
+- Verified headless: the outline follows focus on Controls; RB opens Game Options; the D-pad walks rows with the row highlight and help text following; right steps a choice; up/down pass sliders without changing them.
+
 ## Help line (patch 0007)
 A panel under the Game Options list says what the highlighted option does, for the mouse and for controller focus. All 84 rows have text, and a default hint shows when no row is highlighted. The strings live in `tools/settings_specs/help.json`. `tools/openq4_settings_help.py` adds the panel, wires each row's hover window and writes the strings to every `*_openq4.lang` table. Run it again after adding rows; rows already wired are skipped. Checked on screen: the longest text wraps to three lines and fits.
 

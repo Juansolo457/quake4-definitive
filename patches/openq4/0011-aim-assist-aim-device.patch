@@ -1,0 +1,172 @@
+From 518c8ebc937b88b51291783069feac84261ee2b2 Mon Sep 17 00:00:00 2001
+From: juansolo457 <5344231+Juansolo457@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 19:46:13 -0700
+Subject: [PATCH 11/13] Aim assist: follow the aim device, explain skipped
+ bends, wider Wide cone
+
+- The muzzle aim's controller check used the last input of any kind, so typing
+  in the console or a mouse twitch on the desk switched it off until a pad
+  button. The engine now publishes in_aimWithController: moving the look stick
+  sets it, real mouse movement (3+ counts in a usercmd) clears it, keys never
+  change it; before either has aimed it follows the last input.
+- pm_showAimAssist 1 prints why a shot was not bent: Aim Assist not Full,
+  aiming with the mouse, weapon without aim assist, or no enemy in the cone.
+- Full (Wide) also widens the aim cone: pm_AimAssistWideScale (default 2, so
+  about 8.5 degrees each side instead of the 360's 4.3).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/framework/UsercmdGen.cpp | 25 +++++++++++++++++++++++++
+ src/game/Player.cpp          |  4 ++++
+ src/game/Weapon.cpp          | 23 ++++++++++++++++++-----
+ src/game/gamesys/SysCvar.cpp |  3 ++-
+ src/game/gamesys/SysCvar.h   |  1 +
+ 5 files changed, 50 insertions(+), 6 deletions(-)
+
+diff --git a/src/framework/UsercmdGen.cpp b/src/framework/UsercmdGen.cpp
+index b67a903..a5d227d 100644
+--- a/src/framework/UsercmdGen.cpp
++++ b/src/framework/UsercmdGen.cpp
+@@ -44,6 +44,11 @@ static const float JOYSTICK_AXIS_LOOK_SCALE = 1.0f / 127.0f;
+ static idCVar ui_weaponWheelOffset( "ui_weaponWheelOffset", "27", CVAR_GUI | CVAR_ARCHIVE | CVAR_INTEGER,
+ 	"weapon wheel horizontal offset in percent of viewport width; 0 centers, 27 preserves the original position", -40, 40 );
+ static idCVar in_weaponWheelSensitivity( "in_weaponWheelSensitivity", "4.0", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_FLOAT, "Classic controller weapon wheel cursor sensitivity (pixels per look degree)", 0.25f, 16.0f );
++// openQ4: bridge for the game's controller-only aim assist (rvWeapon::XenonMuzzleAim). Moving the
++// look stick sets it, real mouse movement clears it, and keys never change it, so typing in the
++// console or a mouse twitch on the desk does not switch the aim device.
++static idCVar in_aimWithController( "in_aimWithController", "0", CVAR_SYSTEM | CVAR_BOOL | CVAR_ROM | CVAR_NOCHEAT, "the player aims with the controller's look stick (1) or the mouse (0)" );
++static const int AIM_MOUSE_MIN_COUNTS = 3;		// mouse counts in one usercmd that count as aiming with the mouse
+ // Local presentation bridge: radial selectors need stick deflection, not
+ // integrated view angles. These never enter a usercmd or the network protocol.
+ static idCVar ui_radialStickActive( "ui_radialStickActive", "0", CVAR_SYSTEM | CVAR_BOOL | CVAR_ROM | CVAR_NOCHEAT, "the radial selector's current input is a controller" );
+@@ -487,6 +492,8 @@ private:
+ 	int				scoreboardStickDirection;			// the right stick's scroll of the held scoreboard
+ 	int				scoreboardStickRepeat;				// when the held stick scrolls again
+ 	float			xenonLookFilter[2];					// in_joystickXenon smoothed yaw/pitch input
++	bool			aimWithController;					// the look stick moved last, not the mouse (in_aimWithController)
++	bool			aimDeviceKnown;						// the stick or the mouse has aimed since startup
+ 
+ 	static idCVar	in_yawSpeed;
+ 	static idCVar	in_pitchSpeed;
+@@ -573,6 +580,8 @@ idUsercmdGenLocal::idUsercmdGenLocal( void ) {
+ 	mouseFilterIndex = 0;
+ 	mouseFilterBaseYaw = 0.0f;
+ 	mouseFilterBasePitch = 0.0f;
++	aimWithController = false;
++	aimDeviceKnown = false;
+ 
+ 	ClearAngles();
+ 	Clear();
+@@ -1019,6 +1028,11 @@ void idUsercmdGenLocal::MouseMove( void ) {
+ 
+ 	UpdateMouseAccelDebugLog();
+ 
++	if ( abs( mouseDx ) + abs( mouseDy ) >= AIM_MOUSE_MIN_COUNTS ) {
++		aimWithController = false;
++		aimDeviceKnown = true;
++	}
++
+ 	history[historyCounter&7][0] = mouseDx;
+ 	history[historyCounter&7][1] = mouseDy;
+ 	
+@@ -1148,6 +1162,17 @@ void idUsercmdGenLocal::JoystickMove( void ) {
+ 	const int moveAxisX = joystickAxis[AXIS_YAW];
+ 	const int moveAxisY = joystickAxis[AXIS_PITCH];
+ 	cvarSystem->SetCVarBool( "ui_radialStickActive", idKeyInput::LastInputWasController() );
++	// axes arrive past the backend's dead zone, so any deflection is the player's;
++	// until either device has aimed, go by the last input (a menu button, say)
++	if ( lookAxisX != 0.0f || lookAxisY != 0.0f ) {
++		aimWithController = true;
++		aimDeviceKnown = true;
++	} else if ( !aimDeviceKnown ) {
++		aimWithController = idKeyInput::LastInputWasController();
++	}
++	if ( in_aimWithController.GetBool() != aimWithController ) {
++		cvarSystem->SetCVarBool( "in_aimWithController", aimWithController );
++	}
+ 
+ 	// openQ4: while the held scoreboard scrolls (ui-visual-design.md 14.14),
+ 	// the right stick scrolls it a row on each push past half its travel, then
+diff --git a/src/game/Player.cpp b/src/game/Player.cpp
+index e48f566..fd4dd53 100644
+--- a/src/game/Player.cpp
++++ b/src/game/Player.cpp
+@@ -7752,6 +7752,10 @@ void idPlayer::UpdateFocus( void ) {
+ 			{
+ 				size = dFar * idMath::Tan( DEG2RAD( fovY * 0.5f ) ) * weapon->GetAutoAimFOV()/100.0;
+ 			}
++			// openQ4: Full (Wide) also widens the cone
++			if ( pm_AimAssist.GetInteger() == 3 ) {
++				size *= pm_AimAssistWideScale.GetFloat();
++			}
+ 			aimArea.SetOrigin( GetEyePosition() );
+ 			aimArea.SetAxis( viewAngles.ToMat3() );
+ 			aimArea.SetSize( dNear, dFar, size, size );
+diff --git a/src/game/Weapon.cpp b/src/game/Weapon.cpp
+index 526ab0a..1477d9f 100644
+--- a/src/game/Weapon.cpp
++++ b/src/game/Weapon.cpp
+@@ -2609,15 +2609,28 @@ single player and controller only. pm_AimAssistBump and pm_AimAssistThreshold ar
+ =====================
+ */
+ void rvWeapon::XenonMuzzleAim( const idVec3 &muzzleOrigin, idMat3 &muzzleAxis ) {
+-	// ui_radialStickActive is the engine's last-input-was-a-controller flag, refreshed every usercmd.
+-	const bool controller = cvarSystem->GetCVarBool( "ui_radialStickActive" ) || pm_AimAssistAnyInput.GetBool();
+-	if ( pm_AimAssist.GetInteger() < 2 || gameLocal.isMultiplayer || owner == NULL || !controller || !AllowAutoAim() ) {
++	if ( gameLocal.isMultiplayer || owner == NULL ) {
+ 		return;
+ 	}
+-	idActor *enemy = owner->bestEnemy.GetEntity();
+-	if ( enemy == NULL ) {
++	// pm_showAimAssist names the reason when a shot is left alone
++	const char *skipped = NULL;
++	if ( pm_AimAssist.GetInteger() < 2 ) {
++		skipped = "Aim Assist is not Full";
++	} else if ( !cvarSystem->GetCVarBool( "in_aimWithController" ) && !pm_AimAssistAnyInput.GetBool() ) {
++		// the engine's aim device: the look stick or the mouse, whichever aimed last
++		skipped = "aiming with the mouse";
++	} else if ( !AllowAutoAim() ) {
++		skipped = "this weapon has no aim assist";
++	} else if ( owner->bestEnemy.GetEntity() == NULL ) {
++		skipped = "no enemy in the aim cone";
++	}
++	if ( skipped != NULL ) {
++		if ( pm_showAimAssist.GetBool() ) {
++			gameLocal.Printf( "aim assist muzzle aim: shot not bent, %s\n", skipped );
++		}
+ 		return;
+ 	}
++	idActor *enemy = owner->bestEnemy.GetEntity();
+ 
+ 	const idVec3 eye = owner->GetEyePosition();
+ 	const idVec3 end = eye + owner->viewAngles.ToForward() * pm_AimAssistDistance.GetInteger();
+diff --git a/src/game/gamesys/SysCvar.cpp b/src/game/gamesys/SysCvar.cpp
+index 2b6ab8d..1264f62 100644
+--- a/src/game/gamesys/SysCvar.cpp
++++ b/src/game/gamesys/SysCvar.cpp
+@@ -445,8 +445,9 @@ idCVar g_liquidTestVolumeSize(      "g_liquidTestVolumeSize",   "640",
+ // The SDK carries the target focus and stick friction; the 360 build's muzzle aim (pm_AimAssist 2)
+ // was recovered from its executable (rvWeapon::XenonMuzzleAim). pm_AimAssistBump and
+ // pm_AimAssistThreshold are unused there as well.
+-idCVar pm_AimAssist(				"pm_AimAssist",				"2",			CVAR_GAME | CVAR_INTEGER | CVAR_ARCHIVE , "Xbox 360 controller aim assist: 0 off, 1 enemy focus and stick friction, 2 also aims shots at the target (360 muzzle aim), 3 as 2 with the target found anywhere in the aim cone.\n", 0, 3, idCmdSystem::ArgCompletion_Integer<0,3> );
++idCVar pm_AimAssist(				"pm_AimAssist",				"2",			CVAR_GAME | CVAR_INTEGER | CVAR_ARCHIVE , "Xbox 360 controller aim assist: 0 off, 1 enemy focus and stick friction, 2 also aims shots at the target (360 muzzle aim), 3 as 2 with a wider cone (pm_AimAssistWideScale) searched in full.\n", 0, 3, idCmdSystem::ArgCompletion_Integer<0,3> );
+ idCVar pm_AimAssistAnyInput(		"pm_AimAssistAnyInput",		"0",			CVAR_GAME | CVAR_BOOL | CVAR_CHEAT, "testing: apply the controller-only aim assist muzzle aim whatever the last input was.\n" );
++idCVar pm_AimAssistWideScale(		"pm_AimAssistWideScale",	"2",			CVAR_GAME | CVAR_FLOAT | CVAR_ARCHIVE, "pm_AimAssist 3: the aim cone's width as a multiple of the weapon's (the 360's cone is about 4 degrees each side).\n", 1.0f, 4.0f );
+ idCVar pm_AimAssistDistance(		"pm_AimAssistDistance",		"1000",			CVAR_GAME | CVAR_INTEGER, "The max aim assist distance.\n");
+ idCVar pm_AimAssistThreshold(		"pm_AimAssistThreshold",	"1.0",			CVAR_GAME | CVAR_FLOAT, "Threshold by which the projectile is aimed at the offending target.\n");
+ idCVar pm_AimAssistFOV(				"pm_AimAssistFOV",			"10",			CVAR_GAME | CVAR_INTEGER, "The field of view for aim assistance.\n");
+diff --git a/src/game/gamesys/SysCvar.h b/src/game/gamesys/SysCvar.h
+index 47ebc87..2efc930 100644
+--- a/src/game/gamesys/SysCvar.h
++++ b/src/game/gamesys/SysCvar.h
+@@ -279,6 +279,7 @@ extern idCVar	g_liquidTestVolumeSize;
+ // openQ4: defined on every platform
+ extern idCVar pm_AimAssist;
+ extern idCVar pm_AimAssistAnyInput;
++extern idCVar pm_AimAssistWideScale;
+ extern idCVar pm_AimAssistDistance;
+ extern idCVar pm_AimAssistThreshold;
+ extern idCVar pm_AimAssistFOV;
+-- 
+2.53.0.windows.1
+

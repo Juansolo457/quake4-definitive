@@ -1,0 +1,75 @@
+From 168327eccca3a986ac3dff1071f96ff1c27fce64 Mon Sep 17 00:00:00 2001
+From: juansolo457 <5344231+Juansolo457@users.noreply.github.com>
+Date: Wed, 21 Oct 2026 19:46:14 -0700
+Subject: [PATCH 12/13] Add testKeyEvent: queue a key press or release from the
+ console
+
+testKeyEvent <key> [0|1] (cheat) pushes a key event through the event loop as
+if a device sent it (idEventLoop::PushTestEvent), so hidden test runs can drive
+the classic menus with controller keys (JOY1-JOY12).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/framework/EventLoop.h  |  4 ++++
+ src/framework/KeyInput.cpp | 23 +++++++++++++++++++++++
+ 2 files changed, 27 insertions(+)
+
+diff --git a/src/framework/EventLoop.h b/src/framework/EventLoop.h
+index 9f843c6..3a21055 100644
+--- a/src/framework/EventLoop.h
++++ b/src/framework/EventLoop.h
+@@ -75,6 +75,10 @@ public:
+ 					// Dispatches all pending events and returns the current time.
+ 	int				RunEventLoop( bool commandExecution = true );
+ 
++					// openQ4: testKeyEvent queues a key event as if a device sent it,
++					// so headless runs can drive menus.
++	void			PushTestEvent( sysEvent_t event ) { PushEvent( &event ); }
++
+ 					// Gets the current time in a way that will be journaled properly,
+ 					// as opposed to Sys_Milliseconds(), which always reads a real timer.
+ 					// Inline so the renderer module can call it without a
+diff --git a/src/framework/KeyInput.cpp b/src/framework/KeyInput.cpp
+index fc11038..b725273 100644
+--- a/src/framework/KeyInput.cpp
++++ b/src/framework/KeyInput.cpp
+@@ -745,6 +745,28 @@ static void Key_TestPromptDevice_f( const idCmdArgs &args ) {
+ 	common->Printf( "prompt device: %s\n", key_lastInputFamily == KEY_INPUT_FAMILY_CONTROLLER ? "controller" : "desktop" );
+ }
+ 
++/*
++============
++Key_TestKeyEvent_f
++
++openQ4: testKeyEvent <key> [0|1] queues a key release or press (default press)
++as if a device sent it, so headless runs can drive menus with controller keys.
++============
++*/
++static void Key_TestKeyEvent_f( const idCmdArgs &args ) {
++	const int keynum = args.Argc() >= 2 ? idKeyInput::StringToKeyNum( args.Argv( 1 ) ) : -1;
++	if ( !Key_IsValidKeyNum( keynum ) ) {
++		common->Printf( "usage: testKeyEvent <key> [0|1]\n" );
++		return;
++	}
++	sysEvent_t ev;
++	memset( &ev, 0, sizeof( ev ) );
++	ev.evType = SE_KEY;
++	ev.evValue = keynum;
++	ev.evValue2 = args.Argc() >= 3 ? atoi( args.Argv( 2 ) ) : 1;
++	eventLoop->PushTestEvent( ev );
++}
++
+ /*
+ ============
+ idKeyInput::KeysFromBinding
+@@ -1036,6 +1058,7 @@ void idKeyInput::Init( void ) {
+ 	cmdSystem->AddCommand( "unbindall", Key_Unbindall_f, CMD_FL_SYSTEM, "unbinds any commands from all keys" );
+ 	cmdSystem->AddCommand( "listBinds", Key_ListBinds_f, CMD_FL_SYSTEM, "lists key bindings" );
+ 	cmdSystem->AddCommand( "testPromptDevice", Key_TestPromptDevice_f, CMD_FL_SYSTEM | CMD_FL_CHEAT, "sets the device prompts name until the next input: controller or desktop" );
++	cmdSystem->AddCommand( "testKeyEvent", Key_TestKeyEvent_f, CMD_FL_SYSTEM | CMD_FL_CHEAT, "queues a key press (1, default) or release (0) as if a device sent it" );
+ }
+ 
+ /*
+-- 
+2.53.0.windows.1
+

@@ -57,6 +57,22 @@ ModDB limits each connection to about 1.2 MB/s. Splitting the download into rang
 ## Measurement note
 Automated 4K runs, both openQ4's `renderer_gameplay_benchmark.py` and my visible-window launcher `tools/bench_graphics.py`, reported a flat 60.0 fps "simulation-bound" in every configuration. openQ4 caps windows it considers hidden at 60 fps on Windows, and launches from this tool shell appear to trigger that. The numbers aren't the game's real performance and weren't used. Check in game with `com_showFPS 1` instead.
 
+## What the 360 renderer did differently
+Hands-on: the marines' yellow visors looked shinier on the 360. The visor material is byte-identical on both (`models/characters/marine/helmet`, `m_helmet`, `t_helmet`). A mask written to destination alpha, then `cubeMap gfx/env/marhelmet` with `texgen reflect`, `blend GL_DST_ALPHA, GL_ONE`, tinted by the entity color. openQ4 draws it with the stock bumpy-environment program, and a Hangar 1 screenshot of a medic shows the gold reflection. The 360 also ships its own `gfx/env/marhelmet` (and `sheen`, `medic`) inside its XPR2 texture bundles; extracting those needs an XPR2/tiled-texture decoder (not done).
+
+The 360's renderer defaults (from `default.xex`'s cvar table) against openQ4:
+
+| Cvar | 360 | openQ4 | Notes |
+|---|---|---|---|
+| `r_gamma` | **1.3** | 1.0 | brighter mid-tones; reflections and specular stand out more |
+| `r_brightness` | **1.2** | 1.0 | brighter overall |
+| `r_multiSamples` | 2 | 0 (definitive: 4) | |
+| `image_anisotropy` | 1 | 16 (definitive) | ours is sharper |
+| `r_lightDetailLevel` | 9 | 0 | openQ4 skips lights *below* this level, so the 360 dropped minor lights; PC renders all |
+| `image_downSizeBumpLimit` / `SpecularLimit` | 0 (64) | 256 / 64 | 360 textures were downsized |
+
+So the one 360 look worth taking is its gamma and brightness. openQ4 applies both in a shader (they show in screenshots); a side-by-side in Hangar 1 at 1.3/1.2 is visibly brighter.
+
 ## GPU usage and the performance trace
 Reported (2026-10-21): GPU usage near 40%, sometimes spiking. On the test PC (RTX 4090, 4K, 240 Hz) that's headroom, not a problem: at a 240 fps cap the GPU renders 240 frames a second and idles between them. The usage figure follows how heavy each frame is (open areas, many shadowed lights, effects) and how many frames are drawn. Levers, if needed: a lower `com_maxfps` (144 or 120 cuts GPU work roughly in proportion), `r_multiSamples 2`, `r_shadowMapSize 1024`.
 
